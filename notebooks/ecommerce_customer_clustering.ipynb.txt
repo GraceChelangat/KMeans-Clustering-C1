@@ -1,0 +1,2529 @@
+{
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "id": "0e0de507-35d4-4d82-8b72-dd309a4a97e1",
+      "metadata": {
+        "id": "0e0de507-35d4-4d82-8b72-dd309a4a97e1"
+      },
+      "source": [
+        "# K-Means Clustering: E-Commerce Customer Behavior\n",
+        "\n",
+        "## Group C1\n",
+        "\n",
+        "**Dataset:** `ecommerce_customer_behavior.csv`  \n",
+        "**Unit of Analysis:** Customers  \n",
+        "**Technique:** K-Means Clustering\n",
+        "\n",
+        "### Objective\n",
+        "\n",
+        "The objective of this analysis is to identify meaningful customer segments based on e-commerce customer behavior. The analysis follows a complete K-Means clustering pipeline, including exploratory data analysis, feature selection, preprocessing, determination of the optimal number of clusters, model fitting, cluster evaluation, customer profiling, robustness testing, and model persistence.\n",
+        "\n",
+        "Because K-Means is an unsupervised learning algorithm, the dataset does not have a target variable. Customers will instead be grouped according to similarities in their behavioral characteristics."
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "2b9f877b-f29c-4bbe-be1d-352964be298a",
+      "metadata": {
+        "id": "2b9f877b-f29c-4bbe-be1d-352964be298a"
+      },
+      "source": [
+        "## 1. Setup, Data Loading and Exploratory Data Analysis\n",
+        "\n",
+        "This section prepares the working environment, loads the e-commerce customer behavior dataset, examines its structure and quality, and performs exploratory data analysis before clustering.\n",
+        "\n",
+        "The customer identifier will be identified during data inspection and excluded from all descriptive statistics, correlations, and visualizations because an identifier uniquely labels a customer but does not represent customer behavior. Including it could introduce meaningless numerical patterns into the analysis."
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "a7583753-5954-497b-81ba-1f8787dedd20",
+      "metadata": {
+        "id": "a7583753-5954-497b-81ba-1f8787dedd20"
+      },
+      "source": [
+        "### 1.1 Import Required Libraries\n",
+        "\n",
+        "The following libraries are imported for data manipulation, visualization, preprocessing, clustering, model evaluation, and model persistence."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "!git clone https://github.com/NicoleWachira/KMeans-Clustering-C1.git\n",
+        "%cd KMeans-Clustering-C1/notebooks"
+      ],
+      "metadata": {
+        "id": "Yj67olQdOmyh"
+      },
+      "id": "Yj67olQdOmyh",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "de7be996-3741-4984-80e1-1d45a318c9d1",
+      "metadata": {
+        "execution": {
+          "iopub.execute_input": "2026-09-22T12:42:34.335563Z",
+          "iopub.status.busy": "2026-09-22T12:42:34.335419Z",
+          "iopub.status.idle": "2026-09-22T12:42:35.694117Z",
+          "shell.execute_reply": "2026-09-22T12:42:35.693121Z"
+        },
+        "id": "de7be996-3741-4984-80e1-1d45a318c9d1"
+      },
+      "outputs": [],
+      "source": [
+        "# Data manipulation\n",
+        "import pandas as pd\n",
+        "import numpy as np\n",
+        "\n",
+        "# Data visualization\n",
+        "import matplotlib.pyplot as plt\n",
+        "import seaborn as sns\n",
+        "\n",
+        "# Preprocessing\n",
+        "from sklearn.preprocessing import StandardScaler\n",
+        "\n",
+        "# Clustering\n",
+        "from sklearn.cluster import KMeans\n",
+        "\n",
+        "# Cluster evaluation\n",
+        "from sklearn.metrics import (\n",
+        "    silhouette_score,\n",
+        "    davies_bouldin_score,\n",
+        "    calinski_harabasz_score\n",
+        ")\n",
+        "\n",
+        "# Model persistence\n",
+        "import joblib\n",
+        "\n",
+        "# Display settings\n",
+        "pd.set_option(\"display.max_columns\", None)\n",
+        "\n",
+        "print(\"Libraries imported successfully.\")"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "6253cdf3-09ee-4968-9fec-f11b63c024b0",
+      "metadata": {
+        "collapsed": true,
+        "execution": {
+          "iopub.execute_input": "2026-09-22T12:42:35.695995Z",
+          "iopub.status.busy": "2026-09-22T12:42:35.695688Z",
+          "iopub.status.idle": "2026-09-22T12:42:35.702154Z",
+          "shell.execute_reply": "2026-09-22T12:42:35.701382Z"
+        },
+        "id": "6253cdf3-09ee-4968-9fec-f11b63c024b0"
+      },
+      "outputs": [],
+      "source": [
+        "df = pd.read_csv(\"../data/ecommerce_customer_behavior.csv\")\n",
+        "\n",
+        "print(\"Dataset loaded successfully.\")"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "54f9e9a2-a55a-4275-b14a-a62c622ad65d",
+      "metadata": {
+        "execution": {
+          "iopub.execute_input": "2026-09-22T12:42:35.704023Z",
+          "iopub.status.busy": "2026-09-22T12:42:35.703469Z",
+          "iopub.status.idle": "2026-09-22T12:42:35.707939Z",
+          "shell.execute_reply": "2026-09-22T12:42:35.707183Z"
+        },
+        "id": "54f9e9a2-a55a-4275-b14a-a62c622ad65d"
+      },
+      "outputs": [],
+      "source": [
+        "print(\"Dataset shape:\", df.shape)\n",
+        "print(\"Number of customers:\", df.shape[0])\n",
+        "print(\"Number of columns:\", df.shape[1])"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "0ef5607d-5591-4953-9146-9f485dd0a33b",
+      "metadata": {
+        "execution": {
+          "iopub.execute_input": "2026-09-22T12:42:35.709879Z",
+          "iopub.status.busy": "2026-09-22T12:42:35.709264Z",
+          "iopub.status.idle": "2026-09-22T12:42:35.721978Z",
+          "shell.execute_reply": "2026-09-22T12:42:35.721204Z"
+        },
+        "id": "0ef5607d-5591-4953-9146-9f485dd0a33b"
+      },
+      "outputs": [],
+      "source": [
+        "df.head()"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "168ac6e0-85a1-41d1-af1f-e031cc0b21a4",
+      "metadata": {
+        "execution": {
+          "iopub.execute_input": "2026-09-22T12:42:35.723844Z",
+          "iopub.status.busy": "2026-09-22T12:42:35.723249Z",
+          "iopub.status.idle": "2026-09-22T12:42:35.727633Z",
+          "shell.execute_reply": "2026-09-22T12:42:35.726927Z"
+        },
+        "id": "168ac6e0-85a1-41d1-af1f-e031cc0b21a4"
+      },
+      "outputs": [],
+      "source": [
+        "print(\"Column names:\")\n",
+        "for column in df.columns:\n",
+        "    print(\"-\", column)"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "ce64b62d-52cc-4ef4-937d-135ecd679cd1",
+      "metadata": {
+        "execution": {
+          "iopub.execute_input": "2026-09-22T12:42:35.729136Z",
+          "iopub.status.busy": "2026-09-22T12:42:35.728989Z",
+          "iopub.status.idle": "2026-09-22T12:42:35.738490Z",
+          "shell.execute_reply": "2026-09-22T12:42:35.737756Z"
+        },
+        "id": "ce64b62d-52cc-4ef4-937d-135ecd679cd1"
+      },
+      "outputs": [],
+      "source": [
+        "df.info()"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "7cb134a5-2c77-4d33-90b1-a8fb60a10c2a",
+      "metadata": {
+        "execution": {
+          "iopub.execute_input": "2026-09-22T12:42:35.740325Z",
+          "iopub.status.busy": "2026-09-22T12:42:35.739723Z",
+          "iopub.status.idle": "2026-09-22T12:42:35.745258Z",
+          "shell.execute_reply": "2026-09-22T12:42:35.744457Z"
+        },
+        "id": "7cb134a5-2c77-4d33-90b1-a8fb60a10c2a"
+      },
+      "outputs": [],
+      "source": [
+        "df.isnull().sum()"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "102ca473-bdde-4419-8e4d-f7b3a40c3a6a",
+      "metadata": {
+        "id": "102ca473-bdde-4419-8e4d-f7b3a40c3a6a"
+      },
+      "source": [
+        "### 1.4 Identifier and Feature Identification\n",
+        "\n",
+        "The `customer_id` column is a unique identifier for each customer. Although it is stored as an integer, it does not measure customer behavior and therefore has no meaningful numerical relationship with the other variables. It is excluded from all descriptive statistics, correlations, visualizations, and the K-Means distance calculation.\n",
+        "\n",
+        "The `preferred_device` variable is categorical and describes whether a customer prefers Mobile or Desktop. It will not be included directly in the K-Means distance calculation because K-Means operates on numerical distances. Instead, it can later be used for post-hoc cluster profiling to determine whether device preference differs across the identified customer segments.\n",
+        "\n",
+        "The remaining five numerical variables represent customer purchasing behavior and will be examined as potential clustering features:\n",
+        "\n",
+        "- `recency_days` — number of days since the customer's most recent purchase.\n",
+        "- `frequency_per_year` — customer's purchasing frequency per year.\n",
+        "- `avg_order_value_kes` — average value of a customer's orders in Kenyan shillings.\n",
+        "- `total_lifetime_spend_kes` — total amount spent by the customer over their lifetime.\n",
+        "- `num_categories_purchased` — number of product categories purchased by the customer."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "75878ae8-98c9-4c6f-adf2-62081531b769",
+      "metadata": {
+        "execution": {
+          "iopub.execute_input": "2026-09-22T12:42:35.746735Z",
+          "iopub.status.busy": "2026-09-22T12:42:35.746587Z",
+          "iopub.status.idle": "2026-09-22T12:42:35.751768Z",
+          "shell.execute_reply": "2026-09-22T12:42:35.751021Z"
+        },
+        "id": "75878ae8-98c9-4c6f-adf2-62081531b769"
+      },
+      "outputs": [],
+      "source": [
+        "# Exclude the customer identifier from all EDA statistics and plots\n",
+        "eda_df = df.drop(columns=[\"customer_id\"])\n",
+        "\n",
+        "# Numerical behavioral features\n",
+        "numeric_features = [\n",
+        "    \"recency_days\",\n",
+        "    \"frequency_per_year\",\n",
+        "    \"avg_order_value_kes\",\n",
+        "    \"total_lifetime_spend_kes\",\n",
+        "    \"num_categories_purchased\"\n",
+        "]\n",
+        "\n",
+        "# Categorical feature reserved for later cluster profiling\n",
+        "categorical_features = [\"preferred_device\"]\n",
+        "\n",
+        "print(\"Identifier excluded: customer_id\")\n",
+        "print(\"\\nNumerical behavioral features:\")\n",
+        "print(numeric_features)\n",
+        "\n",
+        "print(\"\\nCategorical profiling feature:\")\n",
+        "print(categorical_features)"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "a09739a8-1cd9-4611-be22-324f8dcbb13c",
+      "metadata": {
+        "execution": {
+          "iopub.execute_input": "2026-09-22T12:42:35.753672Z",
+          "iopub.status.busy": "2026-09-22T12:42:35.753061Z",
+          "iopub.status.idle": "2026-09-22T12:42:35.763236Z",
+          "shell.execute_reply": "2026-09-22T12:42:35.762403Z"
+        },
+        "id": "a09739a8-1cd9-4611-be22-324f8dcbb13c"
+      },
+      "outputs": [],
+      "source": [
+        "eda_df.head()"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "50f85ec2-d77e-4d3f-b1ce-dad7e2327e1b",
+      "metadata": {
+        "id": "50f85ec2-d77e-4d3f-b1ce-dad7e2327e1b"
+      },
+      "source": [
+        "### 1.5 Descriptive Statistics\n",
+        "\n",
+        "Descriptive statistics are calculated only for the numerical customer-behavior variables. The `customer_id` identifier is deliberately excluded because its numerical values are labels rather than meaningful customer characteristics.\n",
+        "\n",
+        "These statistics help us understand the central tendency, spread, and range of the behavioral variables before applying K-Means clustering."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "275fc052-1051-4226-9904-e6a615c28e1b",
+      "metadata": {
+        "execution": {
+          "iopub.execute_input": "2026-09-22T12:42:35.765180Z",
+          "iopub.status.busy": "2026-09-22T12:42:35.764537Z",
+          "iopub.status.idle": "2026-09-22T12:42:35.780858Z",
+          "shell.execute_reply": "2026-09-22T12:42:35.779941Z"
+        },
+        "id": "275fc052-1051-4226-9904-e6a615c28e1b"
+      },
+      "outputs": [],
+      "source": [
+        "# Descriptive statistics for behavioral features only\n",
+        "descriptive_stats = eda_df[numeric_features].describe().T\n",
+        "\n",
+        "descriptive_stats"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "e1c8fef3-ea20-48ab-a13d-e5d0f0fb22d7",
+      "metadata": {
+        "execution": {
+          "iopub.execute_input": "2026-09-22T12:42:35.782898Z",
+          "iopub.status.busy": "2026-09-22T12:42:35.782203Z",
+          "iopub.status.idle": "2026-09-22T12:42:35.789050Z",
+          "shell.execute_reply": "2026-09-22T12:42:35.788106Z"
+        },
+        "id": "e1c8fef3-ea20-48ab-a13d-e5d0f0fb22d7"
+      },
+      "outputs": [],
+      "source": [
+        "# Median values of the behavioral features\n",
+        "eda_df[numeric_features].median()"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "e087166e-ff51-44ee-9d47-de5da71ac5d8",
+      "metadata": {
+        "id": "e087166e-ff51-44ee-9d47-de5da71ac5d8"
+      },
+      "source": [
+        "#### Descriptive Statistics Insights\n",
+        "\n",
+        "The descriptive statistics reveal substantial variation in customer purchasing behavior. The median recency is **30 days**, while the mean is much higher at approximately **104 days**, suggesting that the recency distribution is right-skewed. Many customers purchased relatively recently, while a smaller group has gone much longer without making a purchase.\n",
+        "\n",
+        "Customers make a median of **9.65 purchases per year**, with frequency ranging from **0.2 to 32 purchases per year**. This wide range indicates that the dataset contains both infrequent and highly active customers.\n",
+        "\n",
+        "The average order value has a median of **KES 4,794** and a mean of approximately **KES 5,089**, indicating some variation in how much customers typically spend per order. The count of **724 instead of 750** also confirms that this variable contains missing observations that will require further investigation before clustering.\n",
+        "\n",
+        "Total lifetime spend shows particularly large variation, ranging from **KES 1,000 to KES 858,138**. Its mean of approximately **KES 165,701** is considerably higher than its median of approximately **KES 115,259**, suggesting a right-skewed distribution in which a smaller number of high-value customers have substantially greater lifetime spending.\n",
+        "\n",
+        "Customers purchase from a median of **3 product categories**, although the number ranges from **1 to 9 categories**. This suggests differences in the breadth of customer purchasing behavior, from customers focused on a single category to those purchasing across many categories.\n",
+        "\n",
+        "Overall, the large differences in the ranges and units of these variables indicate that feature scaling will be necessary before K-Means clustering so that high-magnitude variables such as lifetime spending do not dominate the distance calculation."
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "752f9e51-ee86-4a77-9ba4-f67a2f5ac735",
+      "metadata": {
+        "id": "752f9e51-ee86-4a77-9ba4-f67a2f5ac735"
+      },
+      "source": [
+        "### 1.6 Missing Value Analysis\n",
+        "\n",
+        "Missing values are examined before clustering because K-Means cannot operate directly on observations containing missing numerical values. The amount and pattern of missingness will be assessed before deciding on an appropriate treatment."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "5d35bad2-710e-4244-96e6-d27ca0b07d8b",
+      "metadata": {
+        "execution": {
+          "iopub.execute_input": "2026-09-22T12:42:35.790584Z",
+          "iopub.status.busy": "2026-09-22T12:42:35.790419Z",
+          "iopub.status.idle": "2026-09-22T12:42:35.798316Z",
+          "shell.execute_reply": "2026-09-22T12:42:35.797560Z"
+        },
+        "id": "5d35bad2-710e-4244-96e6-d27ca0b07d8b"
+      },
+      "outputs": [],
+      "source": [
+        "# Missing-value count and percentage\n",
+        "missing_summary = pd.DataFrame({\n",
+        "    \"Missing Count\": eda_df.isnull().sum(),\n",
+        "    \"Missing Percentage (%)\": (eda_df.isnull().mean() * 100).round(2)\n",
+        "})\n",
+        "\n",
+        "missing_summary"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "9e3ba8df-c3bb-4a96-aae3-3b3676733134",
+      "metadata": {
+        "execution": {
+          "iopub.execute_input": "2026-09-22T12:42:35.800177Z",
+          "iopub.status.busy": "2026-09-22T12:42:35.799573Z",
+          "iopub.status.idle": "2026-09-22T12:42:35.805600Z",
+          "shell.execute_reply": "2026-09-22T12:42:35.804631Z"
+        },
+        "id": "9e3ba8df-c3bb-4a96-aae3-3b3676733134"
+      },
+      "outputs": [],
+      "source": [
+        "# Separate customers with and without missing average order value\n",
+        "missing_aov = eda_df[eda_df[\"avg_order_value_kes\"].isna()]\n",
+        "complete_aov = eda_df[eda_df[\"avg_order_value_kes\"].notna()]\n",
+        "\n",
+        "print(\"Customers with missing average order value:\", len(missing_aov))\n",
+        "print(\"Customers with recorded average order value:\", len(complete_aov))\n",
+        "print(\n",
+        "    \"Percentage missing:\",\n",
+        "    round(len(missing_aov) / len(eda_df) * 100, 2),\n",
+        "    \"%\"\n",
+        ")"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "ce11e6b4-b4e5-460d-a09c-c891b650f2d2",
+      "metadata": {
+        "execution": {
+          "iopub.execute_input": "2026-09-22T12:42:35.807420Z",
+          "iopub.status.busy": "2026-09-22T12:42:35.806854Z",
+          "iopub.status.idle": "2026-09-22T12:42:35.816467Z",
+          "shell.execute_reply": "2026-09-22T12:42:35.815642Z"
+        },
+        "id": "ce11e6b4-b4e5-460d-a09c-c891b650f2d2"
+      },
+      "outputs": [],
+      "source": [
+        "missing_aov.head(10)"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "4f8d7924-0998-4cf5-98cc-5767a34004d3",
+      "metadata": {
+        "execution": {
+          "iopub.execute_input": "2026-09-22T12:42:35.818451Z",
+          "iopub.status.busy": "2026-09-22T12:42:35.817857Z",
+          "iopub.status.idle": "2026-09-22T12:42:35.826421Z",
+          "shell.execute_reply": "2026-09-22T12:42:35.825593Z"
+        },
+        "id": "4f8d7924-0998-4cf5-98cc-5767a34004d3"
+      },
+      "outputs": [],
+      "source": [
+        "missingness_comparison = pd.DataFrame({\n",
+        "    \"Missing AOV\": missing_aov[numeric_features].mean(),\n",
+        "    \"Recorded AOV\": complete_aov[numeric_features].mean()\n",
+        "})\n",
+        "\n",
+        "missingness_comparison"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "fa6a0b20-3c12-4f9d-95b9-15e8bf7db55a",
+      "metadata": {
+        "id": "fa6a0b20-3c12-4f9d-95b9-15e8bf7db55a"
+      },
+      "source": [
+        "#### Missing Value Insight\n",
+        "\n",
+        "Only `avg_order_value_kes` contains missing values, with **26 out of 750 customers (3.47%)** affected. The remaining variables have no missing observations.\n",
+        "\n",
+        "Inspection of the affected customers shows that the missing average order values are **not structurally caused by an absence of purchasing activity**. Customers with missing AOV still have non-zero purchase frequencies and substantial lifetime spending. For example, some affected customers have purchase frequencies above 20 purchases per year and lifetime spending exceeding KES 300,000.\n",
+        "\n",
+        "The customers with missing AOV also have broadly comparable purchasing characteristics to customers with recorded AOV. Their mean purchase frequency is **10.85 compared with 10.09**, while their mean number of categories purchased is **3.08 compared with 3.14**.\n",
+        "\n",
+        "Therefore, there is no obvious structural explanation for the missing AOV values based on the observed variables. The missingness will be treated as non-structural missing data during preprocessing rather than interpreting the missing values as zero spending. An appropriate imputation method will be selected before K-Means clustering."
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "8686bc68-0863-41fb-b5a8-1c21af6e4b23",
+      "metadata": {
+        "id": "8686bc68-0863-41fb-b5a8-1c21af6e4b23"
+      },
+      "source": [
+        "### 1.7 Preferred Device Distribution\n",
+        "\n",
+        "`preferred_device` is examined separately as a categorical customer characteristic. It is not included in the numerical K-Means distance calculation, but it can later help profile and interpret the resulting customer clusters."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "6076e9fb-38ae-4e1f-9443-a26e3a150b8c",
+      "metadata": {
+        "execution": {
+          "iopub.execute_input": "2026-09-22T12:42:35.827979Z",
+          "iopub.status.busy": "2026-09-22T12:42:35.827825Z",
+          "iopub.status.idle": "2026-09-22T12:42:35.833398Z",
+          "shell.execute_reply": "2026-09-22T12:42:35.832662Z"
+        },
+        "id": "6076e9fb-38ae-4e1f-9443-a26e3a150b8c"
+      },
+      "outputs": [],
+      "source": [
+        "# Frequency distribution of preferred devices\n",
+        "device_counts = eda_df[\"preferred_device\"].value_counts()\n",
+        "\n",
+        "device_counts"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "6d9ba74f-9567-4e9d-b5cc-2d0a1b7f9482",
+      "metadata": {
+        "execution": {
+          "iopub.execute_input": "2026-09-22T12:42:35.834871Z",
+          "iopub.status.busy": "2026-09-22T12:42:35.834686Z",
+          "iopub.status.idle": "2026-09-22T12:42:35.840981Z",
+          "shell.execute_reply": "2026-09-22T12:42:35.840050Z"
+        },
+        "id": "6d9ba74f-9567-4e9d-b5cc-2d0a1b7f9482"
+      },
+      "outputs": [],
+      "source": [
+        "# Percentage distribution\n",
+        "device_percentages = (\n",
+        "    eda_df[\"preferred_device\"]\n",
+        "    .value_counts(normalize=True)\n",
+        "    .mul(100)\n",
+        "    .round(2)\n",
+        ")\n",
+        "\n",
+        "device_percentages"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "3dc71d30-79c4-49a7-a078-7fe4b6ed290d",
+      "metadata": {
+        "execution": {
+          "iopub.execute_input": "2026-09-22T12:42:35.842926Z",
+          "iopub.status.busy": "2026-09-22T12:42:35.842330Z",
+          "iopub.status.idle": "2026-09-22T12:42:35.961262Z",
+          "shell.execute_reply": "2026-09-22T12:42:35.960288Z"
+        },
+        "id": "3dc71d30-79c4-49a7-a078-7fe4b6ed290d"
+      },
+      "outputs": [],
+      "source": [
+        "plt.figure(figsize=(7, 5))\n",
+        "\n",
+        "sns.countplot(\n",
+        "    data=eda_df,\n",
+        "    x=\"preferred_device\",\n",
+        "    order=eda_df[\"preferred_device\"].value_counts().index\n",
+        ")\n",
+        "\n",
+        "plt.title(\"Distribution of Customers by Preferred Device\")\n",
+        "plt.xlabel(\"Preferred Device\")\n",
+        "plt.ylabel(\"Number of Customers\")\n",
+        "\n",
+        "plt.tight_layout()\n",
+        "plt.show()"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "b51bcadd-dfc3-4ead-9269-40a03309e318",
+      "metadata": {
+        "id": "b51bcadd-dfc3-4ead-9269-40a03309e318"
+      },
+      "source": [
+        "**Insight:** Mobile is the most commonly preferred device among customers, followed by Desktop, while Tablet is used by a much smaller proportion of customers. This suggests that the customer base is predominantly mobile-oriented; however, `preferred_device` will be reserved for post-hoc cluster profiling rather than included in the K-Means distance calculation."
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "a76360a9-5700-4a26-87b6-7e692468486d",
+      "metadata": {
+        "id": "a76360a9-5700-4a26-87b6-7e692468486d"
+      },
+      "source": [
+        "### 1.8 Distribution of Numerical Customer Features\n",
+        "\n",
+        "The distributions of the five numerical behavioral variables are examined individually to identify skewness, spread, concentration, and potential extreme values. The `customer_id` column remains excluded because it is an identifier rather than a behavioral feature."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "bfc2961a-55b6-4b62-b11a-993a1e4c6b85",
+      "metadata": {
+        "execution": {
+          "iopub.execute_input": "2026-09-22T12:42:35.963523Z",
+          "iopub.status.busy": "2026-09-22T12:42:35.962733Z",
+          "iopub.status.idle": "2026-09-22T12:42:36.616754Z",
+          "shell.execute_reply": "2026-09-22T12:42:36.615774Z"
+        },
+        "id": "bfc2961a-55b6-4b62-b11a-993a1e4c6b85"
+      },
+      "outputs": [],
+      "source": [
+        "# Plot distributions of numerical behavioral features only\n",
+        "for feature in numeric_features:\n",
+        "    plt.figure(figsize=(8, 5))\n",
+        "\n",
+        "    sns.histplot(\n",
+        "        data=eda_df,\n",
+        "        x=feature,\n",
+        "        bins=30,\n",
+        "        kde=True\n",
+        "    )\n",
+        "\n",
+        "    plt.title(f\"Distribution of {feature.replace('_', ' ').title()}\")\n",
+        "    plt.xlabel(feature.replace(\"_\", \" \").title())\n",
+        "    plt.ylabel(\"Number of Customers\")\n",
+        "\n",
+        "    plt.tight_layout()\n",
+        "    plt.show()"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "fd58e438-0433-40f0-bf8e-f8f75b58b8d0",
+      "metadata": {
+        "id": "fd58e438-0433-40f0-bf8e-f8f75b58b8d0"
+      },
+      "source": [
+        "**Insight:** `recency_days` has a distinctly non-normal and multi-peaked distribution. A large group of customers purchased very recently, particularly within roughly the first 50 days, while other groups have much longer recency values around 100–200 days and 250–350 days. This suggests that the dataset may contain customers at different levels of recent engagement."
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "32f4bbbe-0a1c-40a5-b9a1-a2fd66cfca38",
+      "metadata": {
+        "id": "32f4bbbe-0a1c-40a5-b9a1-a2fd66cfca38"
+      },
+      "source": [
+        "**Insight:** `frequency_per_year` also shows a non-normal distribution, with many customers making only a few purchases per year and other groups purchasing much more frequently. The broad range from 0.2 to 32 purchases per year suggests meaningful differences in customer purchasing activity that may help distinguish customer segments."
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "96314fd1-65d7-4664-bac2-d348823c553d",
+      "metadata": {
+        "id": "96314fd1-65d7-4664-bac2-d348823c553d"
+      },
+      "source": [
+        "**Insight:** `avg_order_value_kes` is spread widely across customers, with most observations concentrated around the middle of the distribution and fewer customers having very high average order values. The distribution also appears to contain more than one concentration of values, suggesting differences in customers' typical transaction sizes."
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "4681bfdf-8457-4236-a29c-e6a5002b3356",
+      "metadata": {
+        "id": "4681bfdf-8457-4236-a29c-e6a5002b3356"
+      },
+      "source": [
+        "**Insight:** `total_lifetime_spend_kes` is strongly right-skewed, with many customers having relatively low lifetime spending and a smaller number reaching several hundred thousand Kenyan shillings. These high-spending customers extend the distribution to approximately KES 858,000 and may represent an important high-value customer segment rather than simply erroneous observations."
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "cde239ad-1b9a-4305-9e04-7b4371974cbf",
+      "metadata": {
+        "id": "cde239ad-1b9a-4305-9e04-7b4371974cbf"
+      },
+      "source": [
+        "**Insight:** `num_categories_purchased` is a discrete variable concentrated between 1 and 4 categories, while relatively few customers purchase from 7 to 9 categories. This indicates that most customers have a fairly focused purchasing range, while a smaller group displays broader product-category engagement."
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "73402fa5-5ed6-45ac-96ed-a5d262445477",
+      "metadata": {
+        "id": "73402fa5-5ed6-45ac-96ed-a5d262445477"
+      },
+      "source": [
+        "### 1.9 Potential Outlier Analysis\n",
+        "\n",
+        "Boxplots are used to identify unusually high or low values among the numerical behavioral features. Potential outliers are not automatically removed because extreme customer behavior may represent genuine and commercially meaningful customer segments. Their presence is first examined before any preprocessing decision is made."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "58b067f0-fd8b-4118-be02-802c43b434f7",
+      "metadata": {
+        "execution": {
+          "iopub.execute_input": "2026-09-22T12:42:36.619124Z",
+          "iopub.status.busy": "2026-09-22T12:42:36.618482Z",
+          "iopub.status.idle": "2026-09-22T12:42:37.065289Z",
+          "shell.execute_reply": "2026-09-22T12:42:37.064207Z"
+        },
+        "id": "58b067f0-fd8b-4118-be02-802c43b434f7"
+      },
+      "outputs": [],
+      "source": [
+        "for feature in numeric_features:\n",
+        "    plt.figure(figsize=(8, 3))\n",
+        "\n",
+        "    sns.boxplot(\n",
+        "        data=eda_df,\n",
+        "        x=feature\n",
+        "    )\n",
+        "\n",
+        "    plt.title(f\"Boxplot of {feature.replace('_', ' ').title()}\")\n",
+        "    plt.xlabel(feature.replace(\"_\", \" \").title())\n",
+        "\n",
+        "    plt.tight_layout()\n",
+        "    plt.show()"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "6ba908a7-0130-4a31-8086-ff383a186c58",
+      "metadata": {
+        "id": "6ba908a7-0130-4a31-8086-ff383a186c58"
+      },
+      "source": [
+        "**Insight:** The boxplot for `recency_days` shows a wide spread in customer recency but no observations flagged as outliers by the boxplot rule. The long upper whisker reflects customers who have not purchased for a long period and should be retained because they may represent inactive or disengaged customer segments."
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "62c54674-313b-4bc2-b4f4-4f2e560e8559",
+      "metadata": {
+        "id": "62c54674-313b-4bc2-b4f4-4f2e560e8559"
+      },
+      "source": [
+        "**Insight:** `frequency_per_year` does not show observations flagged as outliers by the boxplot rule. The wide range reflects genuine differences between customers who purchase infrequently and those who purchase frequently, making this feature potentially useful for customer segmentation."
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "949232fd-0f22-443d-8860-c62bc9761737",
+      "metadata": {
+        "id": "949232fd-0f22-443d-8860-c62bc9761737"
+      },
+      "source": [
+        "**Insight:** `avg_order_value_kes` contains a small number of unusually high observations above approximately KES 10,000. Because these values remain plausible customer transaction amounts and only a few observations are affected, they will not be automatically removed as errors."
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "c3669df3-b30f-40b6-b539-aa46d7f16108",
+      "metadata": {
+        "id": "c3669df3-b30f-40b6-b539-aa46d7f16108"
+      },
+      "source": [
+        "**Insight:** `total_lifetime_spend_kes` contains several high values flagged by the IQR-based boxplot, extending beyond approximately KES 600,000. These observations are consistent with the strong right-skew observed earlier and may represent genuinely high-value customers, so they will be retained rather than removed solely because they are statistically extreme."
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "aea0b84b-8c68-4fb4-bb10-278536bfa6d8",
+      "metadata": {
+        "id": "aea0b84b-8c68-4fb4-bb10-278536bfa6d8"
+      },
+      "source": [
+        "**Insight:** `num_categories_purchased` is concentrated mainly between 2 and 4 categories, with a smaller number of customers purchasing across a broader range. These higher values remain within the valid observed range of customer behavior and are retained for clustering."
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "33706fb3-f6ca-4388-8e11-c5e160c7353f",
+      "metadata": {
+        "id": "33706fb3-f6ca-4388-8e11-c5e160c7353f"
+      },
+      "source": [
+        "### 1.10 Correlation Analysis\n",
+        "\n",
+        "Correlation among the numerical behavioral features is examined before clustering. Highly correlated variables can represent similar customer behavior and may therefore double-count the same underlying signal when Euclidean distances are calculated by K-Means.\n",
+        "\n",
+        "The customer identifier is excluded from the correlation analysis."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "ea626368-ff52-4cb3-a508-fad5f8cfb42b",
+      "metadata": {
+        "execution": {
+          "iopub.execute_input": "2026-09-22T12:42:37.067161Z",
+          "iopub.status.busy": "2026-09-22T12:42:37.067004Z",
+          "iopub.status.idle": "2026-09-22T12:42:37.076781Z",
+          "shell.execute_reply": "2026-09-22T12:42:37.075979Z"
+        },
+        "id": "ea626368-ff52-4cb3-a508-fad5f8cfb42b"
+      },
+      "outputs": [],
+      "source": [
+        "# Correlation matrix using behavioral features only\n",
+        "correlation_matrix = eda_df[numeric_features].corr()\n",
+        "\n",
+        "correlation_matrix.round(2)"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "37a4604f-f5af-4a38-9cf7-2f0a3bb9b256",
+      "metadata": {
+        "execution": {
+          "iopub.execute_input": "2026-09-22T12:42:37.078726Z",
+          "iopub.status.busy": "2026-09-22T12:42:37.078179Z",
+          "iopub.status.idle": "2026-09-22T12:42:37.244229Z",
+          "shell.execute_reply": "2026-09-22T12:42:37.243273Z"
+        },
+        "id": "37a4604f-f5af-4a38-9cf7-2f0a3bb9b256"
+      },
+      "outputs": [],
+      "source": [
+        "plt.figure(figsize=(9, 6))\n",
+        "\n",
+        "sns.heatmap(\n",
+        "    correlation_matrix,\n",
+        "    annot=True,\n",
+        "    fmt=\".2f\",\n",
+        "    cmap=\"coolwarm\",\n",
+        "    center=0\n",
+        ")\n",
+        "\n",
+        "plt.title(\"Correlation Matrix of Numerical Customer Features\")\n",
+        "plt.tight_layout()\n",
+        "plt.show()"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "50765634-82d1-46ed-b4de-e71100947ce1",
+      "metadata": {
+        "id": "50765634-82d1-46ed-b4de-e71100947ce1"
+      },
+      "source": [
+        "**Insight:** The correlation analysis shows strong positive relationships among several purchasing-behavior variables. `frequency_per_year` and `total_lifetime_spend_kes` have the strongest correlation at **0.92**, indicating that customers who purchase more frequently also tend to accumulate higher lifetime spending. `frequency_per_year` is also strongly correlated with `num_categories_purchased` (**0.86**) and `avg_order_value_kes` (**0.83**).\n",
+        "\n",
+        "`avg_order_value_kes` is strongly correlated with `total_lifetime_spend_kes` (**0.86**), while `total_lifetime_spend_kes` and `num_categories_purchased` have a correlation of **0.81**. These strong correlations indicate that some features contain overlapping information and could potentially double-count purchasing intensity in the Euclidean distance used by K-Means.\n",
+        "\n",
+        "In contrast, `recency_days` has moderate negative relationships with the other behavioral variables, ranging from approximately **-0.44 to -0.58**. This suggests that customers who purchased more recently generally tend to purchase more frequently, spend more, and buy across more categories.\n",
+        "\n",
+        "Because several candidate clustering features are highly correlated, feature redundancy should be considered before the final clustering feature set is selected rather than automatically including all numerical variables."
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "1da56acc-9e0d-4923-b688-003b83519d34",
+      "metadata": {
+        "id": "1da56acc-9e0d-4923-b688-003b83519d34"
+      },
+      "source": [
+        "### 1.11 Duplicate Record Check\n",
+        "\n",
+        "Duplicate observations are checked to ensure that repeated customer records do not unintentionally receive additional weight during clustering."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "034751cd-8427-472d-8943-111e16a062cc",
+      "metadata": {
+        "execution": {
+          "iopub.execute_input": "2026-09-22T12:42:37.245978Z",
+          "iopub.status.busy": "2026-09-22T12:42:37.245774Z",
+          "iopub.status.idle": "2026-09-22T12:42:37.251651Z",
+          "shell.execute_reply": "2026-09-22T12:42:37.250924Z"
+        },
+        "id": "034751cd-8427-472d-8943-111e16a062cc"
+      },
+      "outputs": [],
+      "source": [
+        "# Check for completely duplicated rows\n",
+        "duplicate_rows = df.duplicated().sum()\n",
+        "\n",
+        "# Check whether customer identifiers are unique\n",
+        "duplicate_ids = df[\"customer_id\"].duplicated().sum()\n",
+        "\n",
+        "print(\"Completely duplicated rows:\", duplicate_rows)\n",
+        "print(\"Duplicated customer IDs:\", duplicate_ids)"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "56b8dcde-9fa9-418e-94fe-1a7d82345f2d",
+      "metadata": {
+        "id": "56b8dcde-9fa9-418e-94fe-1a7d82345f2d"
+      },
+      "source": [
+        "**Insight:** No completely duplicated rows or duplicated `customer_id` values were found. Therefore, each of the 750 observations represents a unique customer, and no records need to be removed because of duplication."
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "e0992e69-56ca-44e1-a589-d39298e7d89a",
+      "metadata": {
+        "id": "e0992e69-56ca-44e1-a589-d39298e7d89a"
+      },
+      "source": [
+        "### 1.12 EDA Summary\n",
+        "\n",
+        "The dataset contains **750 unique customers and 7 original variables**. `customer_id` was identified as an identifier and excluded from all descriptive statistics, correlations, visualizations, and future clustering calculations. `preferred_device` is categorical and will be reserved for post-hoc cluster profiling rather than included directly in the K-Means distance calculation.\n",
+        "\n",
+        "Five numerical behavioral variables were investigated: `recency_days`, `frequency_per_year`, `avg_order_value_kes`, `total_lifetime_spend_kes`, and `num_categories_purchased`. Their distributions show substantial differences in customer behavior, including customers with different levels of recency, purchasing frequency, transaction value, lifetime spending, and category breadth.\n",
+        "\n",
+        "Missingness occurs only in `avg_order_value_kes`, where **26 of 750 observations (3.47%)** are missing. The affected customers still show meaningful purchasing activity, so there is no obvious evidence that the missing values are structurally caused by customers having no purchase activity. The missing values should therefore be handled during preprocessing rather than interpreted as zero.\n",
+        "\n",
+        "The boxplots identified a small number of high average-order values and several high lifetime-spending observations. These values remain plausible customer behaviors and may represent commercially meaningful high-value customers, so they were not automatically removed.\n",
+        "\n",
+        "The correlation analysis identified substantial redundancy among some purchasing variables. In particular, `frequency_per_year` and `total_lifetime_spend_kes` have a strong positive correlation of **0.92**, while several other purchasing variables have correlations above **0.80**. The final feature-selection stage should therefore consider whether including all of these variables would double-count purchasing intensity in the K-Means distance calculation.\n",
+        "\n",
+        "Finally, the dataset contains **no completely duplicated records and no duplicated customer identifiers**, confirming that all 750 rows represent unique customers."
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "83f519da-9164-458a-acd9-3f83dff59b39",
+      "metadata": {
+        "id": "83f519da-9164-458a-acd9-3f83dff59b39"
+      },
+      "source": [
+        "## 2. Feature Selection\n",
+        "### Member 2: Selecting Features\n",
+        "\n",
+        "This step decides which features will be used for K-Means clustering.\n",
+        "\n",
+        "- Remove the identifier column.\n",
+        "- Keep the categorical variable for profiling after clustering.\n",
+        "- Check the correlation between numeric features.\n",
+        "- Select the numeric features to use for clustering.\n",
+        "\n",
+        "The selected features are then passed to Member 3 for preprocessing."
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "f67b8c37-5cd7-43cf-abb7-8401ea2b36fa",
+      "metadata": {
+        "id": "f67b8c37-5cd7-43cf-abb7-8401ea2b36fa"
+      },
+      "source": [
+        "### 2.1 Feature Inclusion and Exclusion\n",
+        "\n",
+        "The columns are divided into three groups: removed, kept for profiling, or used for clustering.\n",
+        "\n",
+        "- `customer_id` is removed because it only identifies each customer. It does not describe customer behaviour.\n",
+        "- `preferred_device` is kept for profiling after clustering. It is not used in K-Means because converting it into numbers could affect the distance calculations.\n",
+        "- The five numeric behaviour columns are considered for clustering. We will check their correlations to decide which ones to keep."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "5466909a-edcd-4c0d-b973-7c72326ceb7e",
+      "metadata": {
+        "execution": {
+          "iopub.execute_input": "2026-09-22T12:42:37.253715Z",
+          "iopub.status.busy": "2026-09-22T12:42:37.253145Z",
+          "iopub.status.idle": "2026-09-22T12:42:37.261173Z",
+          "shell.execute_reply": "2026-09-22T12:42:37.260367Z"
+        },
+        "id": "5466909a-edcd-4c0d-b973-7c72326ceb7e"
+      },
+      "outputs": [],
+      "source": [
+        "candidate_features = numeric_features  # the 5 behaviour columns from Section 1\n",
+        "\n",
+        "decisions = pd.DataFrame({\n",
+        "    \"Column\": [\"customer_id\", \"preferred_device\", \"recency_days\", \"frequency_per_year\",\n",
+        "               \"avg_order_value_kes\", \"total_lifetime_spend_kes\", \"num_categories_purchased\"],\n",
+        "    \"Group\": [\"Identifier\", \"Categorical\", \"Numeric\", \"Numeric\",\n",
+        "              \"Numeric\", \"Numeric\", \"Numeric\"],\n",
+        "    \"Status at this step\": [\"Removed\", \"Held back for profiling\", \"Candidate\", \"Candidate\",\n",
+        "                            \"Candidate\", \"Candidate\", \"Candidate\"]\n",
+        "})\n",
+        "decisions"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "7232fb25-0f6f-41d1-a4a6-eca57638b627",
+      "metadata": {
+        "id": "7232fb25-0f6f-41d1-a4a6-eca57638b627"
+      },
+      "source": [
+        "### 2.2 Correlation Check\n",
+        "\n",
+        "K-Means uses distance to group similar customers. If two features are very similar, they may give the same information twice.\n",
+        "\n",
+        "- Check the correlation between the candidate features.\n",
+        "- Look for feature pairs with an absolute correlation of **0.80 or higher**.\n",
+        "- Use the results to decide which features should be included in the final clustering."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "d2ca2fc4-94ad-4271-be60-3c68f732b6cd",
+      "metadata": {
+        "execution": {
+          "iopub.execute_input": "2026-09-22T12:42:37.262682Z",
+          "iopub.status.busy": "2026-09-22T12:42:37.262455Z",
+          "iopub.status.idle": "2026-09-22T12:42:37.276416Z",
+          "shell.execute_reply": "2026-09-22T12:42:37.275662Z"
+        },
+        "id": "d2ca2fc4-94ad-4271-be60-3c68f732b6cd"
+      },
+      "outputs": [],
+      "source": [
+        "corr = df[candidate_features].corr()\n",
+        "\n",
+        "# Keep each pair once (upper triangle only)\n",
+        "upper = corr.where(np.triu(np.ones(corr.shape), k=1).astype(bool))\n",
+        "pairs = upper.stack().reset_index()\n",
+        "pairs.columns = [\"Feature 1\", \"Feature 2\", \"Correlation\"]\n",
+        "pairs[\"Abs\"] = pairs[\"Correlation\"].abs()\n",
+        "\n",
+        "strong_pairs = pairs[pairs[\"Abs\"] >= 0.80].sort_values(\"Abs\", ascending=False)\n",
+        "strong_pairs.round(2)"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "1d275d23-4148-4508-a807-09800a77df8a",
+      "metadata": {
+        "id": "1d275d23-4148-4508-a807-09800a77df8a"
+      },
+      "source": [
+        "**Insight:** Some of the five features are strongly related to each other.\n",
+        "\n",
+        "- `frequency_per_year` and `total_lifetime_spend_kes` have the strongest correlation (0.92).\n",
+        "- `frequency_per_year` is also strongly related to `avg_order_value_kes` (0.83) and `num_categories_purchased` (0.86).\n",
+        "- `recency_days` is different, with moderate negative correlations (-0.44 to -0.58).\n",
+        "\n",
+        "Keeping all five features may give too much importance to how much a customer buys, while giving less importance to how recently they purchased. Therefore some highly correlated features may be removed before clustering."
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "8f609a9c-14cd-4f7c-91c5-05cbb14d63ed",
+      "metadata": {
+        "id": "8f609a9c-14cd-4f7c-91c5-05cbb14d63ed"
+      },
+      "source": [
+        "### 2.3 Why Lifetime Spend Repeats Other Features\n",
+        "\n",
+        "`total_lifetime_spend_kes` is related to how often a customer buys and how much they spend per order.\n",
+        "\n",
+        "We can check this by dividing lifetime spend by:\n",
+        "\n",
+        "`frequency_per_year × avg_order_value_kes`\n",
+        "\n",
+        "If the result is fairly consistent, it may show the approximate number of years the customer has been active. This means `total_lifetime_spend_kes` may repeat information already provided by the other features."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "33bf5289-b85d-473a-8a76-4972041c6c5b",
+      "metadata": {
+        "execution": {
+          "iopub.execute_input": "2026-09-22T12:42:37.278370Z",
+          "iopub.status.busy": "2026-09-22T12:42:37.277768Z",
+          "iopub.status.idle": "2026-09-22T12:42:37.284528Z",
+          "shell.execute_reply": "2026-09-22T12:42:37.283838Z"
+        },
+        "id": "33bf5289-b85d-473a-8a76-4972041c6c5b"
+      },
+      "outputs": [],
+      "source": [
+        "ratio = df[\"total_lifetime_spend_kes\"] / (df[\"frequency_per_year\"] * df[\"avg_order_value_kes\"])\n",
+        "ratio.describe().round(2)"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "348fb066-8bc9-4098-bfe4-36e6537797d2",
+      "metadata": {
+        "id": "348fb066-8bc9-4098-bfe4-36e6537797d2"
+      },
+      "source": [
+        "**Insight:** The ratio has a median of **2.53** with most values between **2.02** and **3.02**.\n",
+        "\n",
+        "This shows that lifetime spend is closely related to how often customers buy how much they spend per order and how long they have been customers.\n",
+        "\n",
+        "Because `total_lifetime_spend_kes` is already related to other features keeping it may repeat information and give too much importance to purchasing behaviour. This is supported by its strong correlation with `frequency_per_year` (0.92)."
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "b41df64b-9bb1-423c-9f0b-be9af22c5b44",
+      "metadata": {
+        "id": "b41df64b-9bb1-423c-9f0b-be9af22c5b44"
+      },
+      "source": [
+        "### 2.4 Final Clustering Features\n",
+        "\n",
+        "**Decision:** We remove `total_lifetime_spend_kes` from the clustering features because it is closely related to other features and has the highest correlation (0.92).\n",
+        "\n",
+        "We keep it in the dataset so we can use it later to describe how much each customer segment spends.\n",
+        "\n",
+        "The final clustering features are:\n",
+        "\n",
+        "- `recency_days` – how recently the customer purchased\n",
+        "- `frequency_per_year` – how often the customer purchases\n",
+        "- `avg_order_value_kes` – how much the customer spends per order\n",
+        "- `num_categories_purchased` – how many different categories the customer buys\n",
+        "\n",
+        "Some features are still correlated (0.80–0.86) but each measures a different part of customer behaviour. We keep them because removing more features would leave too little information for clustering.\n",
+        "\n",
+        "Later we will also test clustering with all five features to see how much the results change."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "4dc2d0c7-d5c2-4a01-9d5b-ff0ad193c66f",
+      "metadata": {
+        "execution": {
+          "iopub.execute_input": "2026-09-22T12:42:37.286142Z",
+          "iopub.status.busy": "2026-09-22T12:42:37.285988Z",
+          "iopub.status.idle": "2026-09-22T12:42:37.430786Z",
+          "shell.execute_reply": "2026-09-22T12:42:37.429631Z"
+        },
+        "id": "4dc2d0c7-d5c2-4a01-9d5b-ff0ad193c66f"
+      },
+      "outputs": [],
+      "source": [
+        "dropped_from_clustering = [\"total_lifetime_spend_kes\"]\n",
+        "clustering_features = [f for f in candidate_features if f not in dropped_from_clustering]\n",
+        "profiling_features = [\"preferred_device\", \"total_lifetime_spend_kes\"]\n",
+        "\n",
+        "print(\"Clustering features:\", clustering_features)\n",
+        "print(\"Held back for profiling:\", profiling_features)\n",
+        "print(\"Removed entirely: ['customer_id']\")\n",
+        "\n",
+        "plt.figure(figsize=(8, 5))\n",
+        "sns.heatmap(df[clustering_features].corr(), annot=True, fmt=\".2f\",\n",
+        "            cmap=\"coolwarm\", center=0, vmin=-1, vmax=1)\n",
+        "plt.title(\"Correlation Among Final Clustering Features\")\n",
+        "plt.tight_layout()\n",
+        "plt.show()"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "4af173c0-e8ae-4132-9909-1057489d5a77",
+      "metadata": {
+        "id": "4af173c0-e8ae-4132-9909-1057489d5a77"
+      },
+      "source": [
+        "**Insight:** After removing `total_lifetime_spend_kes` the strongest remaining correlation is between `frequency_per_year` and `num_categories_purchased` (0.86).\n",
+        "\n",
+        "The correlation is still high but the two features measure different aspects of customer behaviour. Therefore we keep both and check the effect of this choice later in the robustness test."
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "d82f0bad-ed50-45ce-a314-ab8144e44613",
+      "metadata": {
+        "id": "d82f0bad-ed50-45ce-a314-ab8144e44613"
+      },
+      "source": [
+        "### 2.5 Feature Selection Summary\n",
+        "\n",
+        "- **Removed:** `customer_id` because it is only an identifier.\n",
+        "- **Kept for profiling:** `preferred_device` and `total_lifetime_spend_kes`. These will help describe the customer groups after clustering.\n",
+        "- **Used for clustering:** `recency_days`, `frequency_per_year`, `avg_order_value_kes` and `num_categories_purchased`.\n",
+        "- **Preprocessing note:** `avg_order_value_kes` has 26 missing values (3.47%). These must be handled before scaling."
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "N76L6zdT_YDn",
+      "metadata": {
+        "id": "N76L6zdT_YDn"
+      },
+      "source": [
+        "## 3. Data Preprocessing\n",
+        "### Member 3: Preprocessing\n",
+        "\n",
+        "This step takes the `clustering_features` selected by Member 2 and prepares them for K-Means:\n",
+        "handling the missing values identified during EDA, then standardizing every feature so that\n",
+        "distance calculations are fair. The output of this section, the fitted `SimpleImputer`, the\n",
+        "fitted `StandardScaler`, and the scaled feature matrix `X_scaled` is handed to Member 4 (finding\n",
+        "k) and must be kept for Member 6 (model persistence), since any new customer has to be imputed\n",
+        "and scaled with these exact fitted objects before a trained K-Means model can assign it to a\n",
+        "cluster correctly."
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "KYHx1u3W_YDn",
+      "metadata": {
+        "id": "KYHx1u3W_YDn"
+      },
+      "source": [
+        "### 3.1 Why Scaling Is Needed for K-Means\n",
+        "\n",
+        "K-Means assigns a customer to a cluster by computing the **Euclidean distance** between that\n",
+        "customer and each cluster centroid, and it updates centroids by averaging raw feature values.\n",
+        "Euclidean distance treats one unit on every axis as equally important, but our four clustering\n",
+        "features are not on comparable numeric scales:\n",
+        "\n",
+        "| Feature                     | Approx. range in this dataset |\n",
+        "|------------------------------|-------------------------------|\n",
+        "| `recency_days`                | ~1 – 350 (days)                |\n",
+        "| `frequency_per_year`          | ~0.2 – 32 (purchases/year)     |\n",
+        "| `avg_order_value_kes`         | ~1,000 – 10,000+ (KES)          |\n",
+        "| `num_categories_purchased`    | 1 – 9 (categories)             |\n",
+        "\n",
+        "`avg_order_value_kes` is expressed in thousands of Kenyan shillings while `num_categories_purchased`\n",
+        "only ever varies by single digits. If we fed the raw values into K-Means, a difference of, say,\n",
+        "2,000 KES in average order value would swamp the squared-distance calculation compared to a\n",
+        "difference of even the full 1–9 range in `num_categories_purchased`not because order value is\n",
+        "actually a more important behavioral signal, but purely because it is measured in bigger numbers.\n",
+        "The clustering result would then mostly reflect spending magnitude and largely ignore recency,\n",
+        "frequency, and category breadth.\n",
+        "\n",
+        "**Standardizing** every feature to mean = 0 and standard deviation = 1 (via `StandardScaler`)\n",
+        "removes this artifact of units and range. After scaling, a \"1 standard deviation\" difference means\n",
+        "the same thing on every feature, so each of the four behavioral signals gets a comparable say in\n",
+        "the distance calculation, and the resulting segments reflect genuine behavioral similarity rather\n",
+        "than which feature happened to be measured in the largest numbers."
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "pD0aeetM_YDo",
+      "metadata": {
+        "id": "pD0aeetM_YDo"
+      },
+      "source": [
+        "### 3.2 Missing Values: Structural vs. Random, and Why the Distinction Matters\n",
+        "\n",
+        "Member 1's EDA (Section 1.6) found that only `avg_order_value_kes` has missing values (26 of 750\n",
+        "customers, 3.47%). Before choosing how to fill them in, it is important to name *why* they are\n",
+        "missing, because the correct treatment depends on it:\n",
+        "\n",
+        "- **Structural missingness** - the value is missing for a systematic, explainable reason baked\n",
+        "  into the data-generating process itself, and the \"missingness\" is itself informative. For\n",
+        "  example, if a customer had `frequency_per_year = 0` (never purchased), then `avg_order_value_kes`\n",
+        "  would be structurally undefined, there is no order to average, so imputing a typical customer's\n",
+        "  order value would fabricate behavior that customer never had. The right treatment for structural\n",
+        "  missingness is usually a domain-driven fill (e.g. 0, or a dedicated \"not applicable\" flag), not a\n",
+        "  statistical average.\n",
+        "- **Random (non-structural) missingness** - the value exists conceptually (the customer *did*\n",
+        "  place orders with *some* average value), but it simply was not recorded e.g. a logging gap or\n",
+        "  a data-entry error. The missingness carries no behavioral meaning of its own, so it is reasonable\n",
+        "  to estimate the missing value from customers with similar, recorded behavior.\n",
+        "\n",
+        "We re-verify which case applies here before deciding, rather than assuming."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "fU9HcbvX_YDo",
+      "metadata": {
+        "execution": {
+          "iopub.execute_input": "2026-09-22T12:42:37.432747Z",
+          "iopub.status.busy": "2026-09-22T12:42:37.432541Z",
+          "iopub.status.idle": "2026-09-22T12:42:37.439359Z",
+          "shell.execute_reply": "2026-09-22T12:42:37.438533Z"
+        },
+        "id": "fU9HcbvX_YDo"
+      },
+      "outputs": [],
+      "source": [
+        "missing_mask = df[\"avg_order_value_kes\"].isna()\n",
+        "\n",
+        "print(\"Customers with missing avg_order_value_kes:\", missing_mask.sum())\n",
+        "print(\"Of those, customers with frequency_per_year == 0 (would justify a structural 0-fill):\",\n",
+        "      ((missing_mask) & (df[\"frequency_per_year\"] == 0)).sum())\n",
+        "print(\"Of those, customers with total_lifetime_spend_kes == 0:\",\n",
+        "      ((missing_mask) & (df[\"total_lifetime_spend_kes\"] == 0)).sum())\n",
+        "print(\"Do ALL missing-AOV customers have positive purchase frequency and lifetime spend?\",\n",
+        "      bool((df.loc[missing_mask, \"frequency_per_year\"] > 0).all() and\n",
+        "           (df.loc[missing_mask, \"total_lifetime_spend_kes\"] > 0).all()))"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "xTXrbVjr_YDo",
+      "metadata": {
+        "id": "xTXrbVjr_YDo"
+      },
+      "source": [
+        "**Finding:** Every customer with a missing `avg_order_value_kes` has a positive purchase\n",
+        "frequency and positive lifetime spend, they clearly did place orders with some average value,\n",
+        "it just was not recorded. None of the missingness lines up with `frequency_per_year == 0`, which\n",
+        "is the only condition in this dataset under which \"no average order value\" would be structurally\n",
+        "correct. This confirms Member 1's earlier finding: **the missingness in `avg_order_value_kes` is\n",
+        "random/non-structural, not structural.**\n",
+        "\n",
+        "Because it is random, we treat it with **statistical imputation** rather than a domain fill. Given\n",
+        "the right-skewed distribution Member 1 documented for this feature (Section 1.8), the median\n",
+        "is used rather than the mean, since the median is not pulled toward the small number of very high\n",
+        "average-order-value customers. We use `sklearn`'s `SimpleImputer` (rather than `.fillna()`\n",
+        "directly) specifically because a fitted imputer object like the scaler can be saved and\n",
+        "re-applied identically to new, unseen customers later."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "D7hc85ds_YDp",
+      "metadata": {
+        "execution": {
+          "iopub.execute_input": "2026-09-22T12:42:37.441439Z",
+          "iopub.status.busy": "2026-09-22T12:42:37.440847Z",
+          "iopub.status.idle": "2026-09-22T12:42:37.454340Z",
+          "shell.execute_reply": "2026-09-22T12:42:37.453556Z"
+        },
+        "id": "D7hc85ds_YDp"
+      },
+      "outputs": [],
+      "source": [
+        "from sklearn.impute import SimpleImputer\n",
+        "\n",
+        "# Build the feature matrix from the features Member 2 selected for clustering\n",
+        "X = df[clustering_features].copy()\n",
+        "\n",
+        "print(\"Missing values per clustering feature, before imputation:\")\n",
+        "print(X.isnull().sum())\n",
+        "\n",
+        "# Median imputation: fit on the training data only, and keep the fitted imputer\n",
+        "# so the exact same learned median can be applied to new customers later.\n",
+        "imputer = SimpleImputer(strategy=\"median\")\n",
+        "X_imputed = pd.DataFrame(\n",
+        "    imputer.fit_transform(X),\n",
+        "    columns=clustering_features,\n",
+        "    index=X.index\n",
+        ")\n",
+        "\n",
+        "print(\"\\nMissing values per clustering feature, after imputation:\")\n",
+        "print(X_imputed.isnull().sum())\n",
+        "print(f\"\\nMedian used to fill avg_order_value_kes: {imputer.statistics_[clustering_features.index('avg_order_value_kes')]:.2f} KES\")"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "17fyLq6X_YDp",
+      "metadata": {
+        "id": "17fyLq6X_YDp"
+      },
+      "source": [
+        "### 3.3 Standardizing the Imputed Features\n",
+        "\n",
+        "With no missing values remaining, `StandardScaler` is fit on the imputed feature matrix. `fit()`\n",
+        "learns each feature's mean and standard deviation from this data, and `transform()` applies\n",
+        "`(x - mean) / std` to every value. Only `.fit_transform()` is called once, on the full training\n",
+        "set that will be used to choose k and fit the final K-Means model this fitted `scaler` (with its\n",
+        "learned means and standard deviations) is exactly what must be reused, unrefit, on any new\n",
+        "customer, so that a new customer is placed on the same scale the clusters were formed\n",
+        "on."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "RUc0B1e9_YDp",
+      "metadata": {
+        "execution": {
+          "iopub.execute_input": "2026-09-22T12:42:37.456348Z",
+          "iopub.status.busy": "2026-09-22T12:42:37.455729Z",
+          "iopub.status.idle": "2026-09-22T12:42:37.475655Z",
+          "shell.execute_reply": "2026-09-22T12:42:37.474906Z"
+        },
+        "id": "RUc0B1e9_YDp"
+      },
+      "outputs": [],
+      "source": [
+        "from sklearn.preprocessing import StandardScaler\n",
+        "\n",
+        "scaler = StandardScaler()\n",
+        "X_scaled = scaler.fit_transform(X_imputed)\n",
+        "X_scaled_df = pd.DataFrame(X_scaled, columns=clustering_features, index=X_imputed.index)\n",
+        "\n",
+        "print(\"Before scaling (mean, std):\")\n",
+        "display(X_imputed.agg([\"mean\", \"std\"]).round(2))\n",
+        "\n",
+        "print(\"\\nAfter scaling (mean, std):\")\n",
+        "display(X_scaled_df.agg([\"mean\", \"std\"]).round(2))"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "tUENYRjy_YDp",
+      "metadata": {
+        "id": "tUENYRjy_YDp"
+      },
+      "source": [
+        "### 3.4 Confirming the Scaled Data Is Correctly Standardized\n",
+        "\n",
+        "Before handing `X_scaled` on to Member 4, we explicitly confirm that every\n",
+        "scaled feature has mean ≈ 0 and standard deviation ≈ 1. `np.isclose(..., atol=1e-8)` is used for\n",
+        "the mean because floating-point arithmetic rarely produces an exact zero, and a small tolerance\n",
+        "is used for the standard deviation to allow for `pandas`' default use of the sample (ddof = 1)\n",
+        "standard deviation."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "hdjKkDH1_YDp",
+      "metadata": {
+        "execution": {
+          "iopub.execute_input": "2026-09-22T12:42:37.477747Z",
+          "iopub.status.busy": "2026-09-22T12:42:37.477159Z",
+          "iopub.status.idle": "2026-09-22T12:42:37.483898Z",
+          "shell.execute_reply": "2026-09-22T12:42:37.483074Z"
+        },
+        "id": "hdjKkDH1_YDp"
+      },
+      "outputs": [],
+      "source": [
+        "means = X_scaled_df.mean()\n",
+        "stds = X_scaled_df.std()\n",
+        "\n",
+        "print(\"Per-feature mean after scaling:\")\n",
+        "print(means.round(4))\n",
+        "print(\"\\nPer-feature standard deviation after scaling:\")\n",
+        "print(stds.round(4))\n",
+        "\n",
+        "assert np.allclose(means, 0, atol=1e-8), \"Scaled feature means are not ~0\"\n",
+        "assert np.allclose(stds, 1, atol=1e-2), \"Scaled feature standard deviations are not ~1\"\n",
+        "print(\"\\n✅ Confirmed: every scaled feature has mean ≈ 0 and standard deviation ≈ 1.\")"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "iidlyzi2_YDq",
+      "metadata": {
+        "id": "iidlyzi2_YDq"
+      },
+      "source": [
+        "### 3.5 Keeping the Fitted Scaler (and Imputer) for reuse on new customers\n",
+        "\n",
+        "Before a new, unseen customer can be assigned to a cluster with the final fitted K-Means model, that customer's raw data must go through the exact same imputation and scaling used here not a freshly fit imputer/scaler. Re-fitting on new data (even a single new customer) would compute a different median, mean, and standard deviation, and silently distort every distance calculation against the trained cluster centroids.\n",
+        "\n",
+        "For that reason, the fitted `imputer` and `scaler` objects above are kept as live Python variables for the rest of this notebook, and are also persisted to disk with `joblib` so they survive independently of notebook re-runs and can be reloaded later for scoring new customers.\n",
+        "\n"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "oUwLG_nd_YDq",
+      "metadata": {
+        "execution": {
+          "iopub.execute_input": "2026-09-22T12:42:37.485909Z",
+          "iopub.status.busy": "2026-09-22T12:42:37.485317Z",
+          "iopub.status.idle": "2026-09-22T12:42:37.491377Z",
+          "shell.execute_reply": "2026-09-22T12:42:37.490637Z"
+        },
+        "id": "oUwLG_nd_YDq"
+      },
+      "outputs": [],
+      "source": [
+        "import joblib\n",
+        "import os\n",
+        "\n",
+        "model_dir = \"../model\"\n",
+        "os.makedirs(model_dir, exist_ok=True)\n",
+        "\n",
+        "preprocessing_path = os.path.join(model_dir, \"ecommerce_preprocessing.joblib\")\n",
+        "joblib.dump(\n",
+        "    {\n",
+        "        \"imputer\": imputer,\n",
+        "        \"scaler\": scaler,\n",
+        "        \"clustering_features\": clustering_features,\n",
+        "    },\n",
+        "    preprocessing_path\n",
+        ")\n",
+        "\n",
+        "print(f\" Fitted imputer and scaler saved to {preprocessing_path}\")\n",
+        "print(\"Kept in-memory for the rest of this notebook: `imputer`, `scaler`, `X_imputed`, `X_scaled`, `X_scaled_df`.\")"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "77vriZ_X_YDq",
+      "metadata": {
+        "id": "77vriZ_X_YDq"
+      },
+      "source": [
+        "### 3.6 Preprocessing Summary\n",
+        "\n",
+        "- **Scaling is required** because K-Means clusters by Euclidean distance, and our four clustering\n",
+        "  features live on very different numeric scales (days, purchases/year, KES, category counts);\n",
+        "  without scaling, `avg_order_value_kes` alone would dominate the distance calculation.\n",
+        "- **Missingness was diagnosed, not assumed.** Only `avg_order_value_kes` had missing values\n",
+        "  (3.47%), and every affected customer had positive purchase frequency and lifetime spend so the\n",
+        "  missingness is **random/non-structural**, not the structural \"customer never purchased\" case,\n",
+        "  and was filled with the median.\n",
+        "- **The scaled data was verified**, not just visually inspected, to have mean ≈ 0 and standard\n",
+        "  deviation ≈ 1 on every feature.\n",
+        "- **The fitted `imputer` and `scaler`** were kept as notebook variables and persisted to\n",
+        "  `../model/ecommerce_preprocessing.joblib` so Member 6 can apply the identical transformation to\n",
+        "  new customers when the final model is deployed.\n",
+        "\n",
+        "`X_scaled` (a NumPy array) and `X_scaled_df` (the same data as a labeled DataFrame) are now ready\n",
+        "for Member 4 to determine the optimal number of clusters."
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "92251ab7",
+      "metadata": {
+        "id": "92251ab7"
+      },
+      "source": [
+        "## 4. Finding Optimal Number of Clusters and Robustness\n",
+        "\n",
+        "### Member 4: Finding K and Robustness\n",
+        "\n",
+        "This section determines a suitable number of customer clusters (`k`) using the scaled data prepared by Member 3.\n",
+        "\n",
+        "Rather than choosing `k` using only one measure, three methods are compared:\n",
+        "\n",
+        "1. **Elbow Method (Inertia)** – looks for the point where adding more clusters produces only a small reduction in within-cluster variation.\n",
+        "2. **Silhouette Score** – measures how well customers fit within their own cluster compared with other clusters. Higher values are better.\n",
+        "3. **Davies-Bouldin Index** – measures similarity between clusters. Lower values indicate more compact and well-separated clusters.\n",
+        "\n",
+        "We test values of `k` from 2 to 10. After identifying the strongest candidate values, robustness checks are performed to determine whether the clustering conclusion changes when reasonable modelling choices are changed.\n"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "2d8dfeb3",
+      "metadata": {
+        "id": "2d8dfeb3"
+      },
+      "source": [
+        "### 4.1 Test a Range of k Values"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "24197ef0",
+      "metadata": {
+        "execution": {
+          "iopub.execute_input": "2026-09-22T12:42:37.493512Z",
+          "iopub.status.busy": "2026-09-22T12:42:37.492944Z",
+          "iopub.status.idle": "2026-09-22T12:42:37.750881Z",
+          "shell.execute_reply": "2026-09-22T12:42:37.749769Z"
+        },
+        "id": "24197ef0"
+      },
+      "outputs": [],
+      "source": [
+        "# Test possible numbers of clusters from 2 to 10\n",
+        "k_values = range(2, 11)\n",
+        "\n",
+        "inertias = []\n",
+        "silhouette_scores = []\n",
+        "davies_bouldin_scores = []\n",
+        "\n",
+        "for k in k_values:\n",
+        "\n",
+        "    # Fit K-Means using the scaled data from Member 3\n",
+        "    model = KMeans(\n",
+        "        n_clusters=k,\n",
+        "        random_state=42,\n",
+        "        n_init=20\n",
+        "    )\n",
+        "\n",
+        "    labels = model.fit_predict(X_scaled)\n",
+        "\n",
+        "    # Save the three evaluation measures\n",
+        "    inertias.append(model.inertia_)\n",
+        "    silhouette_scores.append(silhouette_score(X_scaled, labels))\n",
+        "    davies_bouldin_scores.append(davies_bouldin_score(X_scaled, labels))\n",
+        "\n",
+        "# Put all results into one table\n",
+        "k_results = pd.DataFrame({\n",
+        "    \"k\": list(k_values),\n",
+        "    \"Inertia\": inertias,\n",
+        "    \"Silhouette Score\": silhouette_scores,\n",
+        "    \"Davies-Bouldin Index\": davies_bouldin_scores\n",
+        "})\n",
+        "\n",
+        "k_results.round(4)"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "d8194b00",
+      "metadata": {
+        "id": "d8194b00"
+      },
+      "source": [
+        "The table compares each candidate number of customer segments using three different measures.\n",
+        "\n",
+        "For the **Silhouette Score**, a larger value represents better separation between customer groups.\n",
+        "\n",
+        "For the **Davies-Bouldin Index**, a smaller value is preferred because it means the customer clusters are more compact and less similar to each other.\n",
+        "\n",
+        "Inertia always decreases as more clusters are added, so it is interpreted using the elbow plot rather than simply selecting the smallest inertia."
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "640c19e4",
+      "metadata": {
+        "id": "640c19e4"
+      },
+      "source": [
+        "### 4.2 Elbow Method"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "f3e42d56",
+      "metadata": {
+        "execution": {
+          "iopub.execute_input": "2026-09-22T12:42:37.752651Z",
+          "iopub.status.busy": "2026-09-22T12:42:37.752439Z",
+          "iopub.status.idle": "2026-09-22T12:42:37.857683Z",
+          "shell.execute_reply": "2026-09-22T12:42:37.856786Z"
+        },
+        "id": "f3e42d56"
+      },
+      "outputs": [],
+      "source": [
+        "plt.figure(figsize=(8, 5))\n",
+        "\n",
+        "plt.plot(\n",
+        "    list(k_values),\n",
+        "    inertias,\n",
+        "    marker=\"o\"\n",
+        ")\n",
+        "\n",
+        "plt.xlabel(\"Number of Clusters (k)\")\n",
+        "plt.ylabel(\"Inertia\")\n",
+        "plt.title(\"Elbow Method for E-Commerce Customer Segments\")\n",
+        "plt.xticks(list(k_values))\n",
+        "plt.grid(alpha=0.3)\n",
+        "\n",
+        "plt.tight_layout()\n",
+        "plt.show()"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "54009257",
+      "metadata": {
+        "id": "54009257"
+      },
+      "source": [
+        " The elbow method looks for the point where the reduction in inertia begins to slow noticeably. Before the elbow, adding another customer segment substantially improves within-cluster compactness. After the elbow, additional clusters provide progressively smaller improvements.\n",
+        "\n",
+        "The elbow therefore provides a candidate value of `k`, which will be compared with the Silhouette Score and Davies-Bouldin Index before the final recommendation is passed to Member 5."
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "990b1440",
+      "metadata": {
+        "id": "990b1440"
+      },
+      "source": [
+        "### 4.3 Silhouette Score"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "6e3d5a57",
+      "metadata": {
+        "execution": {
+          "iopub.execute_input": "2026-09-22T12:42:37.859946Z",
+          "iopub.status.busy": "2026-09-22T12:42:37.859323Z",
+          "iopub.status.idle": "2026-09-22T12:42:37.971476Z",
+          "shell.execute_reply": "2026-09-22T12:42:37.970474Z"
+        },
+        "id": "6e3d5a57"
+      },
+      "outputs": [],
+      "source": [
+        "plt.figure(figsize=(8, 5))\n",
+        "\n",
+        "plt.plot(\n",
+        "    list(k_values),\n",
+        "    silhouette_scores,\n",
+        "    marker=\"o\"\n",
+        ")\n",
+        "\n",
+        "plt.xlabel(\"Number of Clusters (k)\")\n",
+        "plt.ylabel(\"Silhouette Score\")\n",
+        "plt.title(\"Silhouette Scores for Different Numbers of Customer Segments\")\n",
+        "plt.xticks(list(k_values))\n",
+        "plt.grid(alpha=0.3)\n",
+        "\n",
+        "plt.tight_layout()\n",
+        "plt.show()\n",
+        "\n",
+        "# Best k according to silhouette score\n",
+        "best_silhouette_k = k_results.loc[\n",
+        "    k_results[\"Silhouette Score\"].idxmax(), \"k\"\n",
+        "]\n",
+        "\n",
+        "best_silhouette = k_results[\"Silhouette Score\"].max()\n",
+        "\n",
+        "print(\"Best k by Silhouette Score:\", best_silhouette_k)\n",
+        "print(\"Best Silhouette Score:\", round(best_silhouette, 4))"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "0734eddb",
+      "metadata": {
+        "id": "0734eddb"
+      },
+      "source": [
+        "The highest Silhouette Score occurs at **k = 5**, with a score of approximately **0.5782**. Therefore, according to the Silhouette method, `5` customer segments provide the strongest separation among the tested values."
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "fd5c0c00",
+      "metadata": {
+        "id": "fd5c0c00"
+      },
+      "source": [
+        "### 4.4 Davies-Bouldin Index"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "00b39906",
+      "metadata": {
+        "execution": {
+          "iopub.execute_input": "2026-09-22T12:42:37.973338Z",
+          "iopub.status.busy": "2026-09-22T12:42:37.973168Z",
+          "iopub.status.idle": "2026-09-22T12:42:38.077013Z",
+          "shell.execute_reply": "2026-09-22T12:42:38.076035Z"
+        },
+        "id": "00b39906"
+      },
+      "outputs": [],
+      "source": [
+        "plt.figure(figsize=(8, 5))\n",
+        "\n",
+        "plt.plot(\n",
+        "    list(k_values),\n",
+        "    davies_bouldin_scores,\n",
+        "    marker=\"o\"\n",
+        ")\n",
+        "\n",
+        "plt.xlabel(\"Number of Clusters (k)\")\n",
+        "plt.ylabel(\"Davies-Bouldin Index\")\n",
+        "plt.title(\"Davies-Bouldin Index for Different Numbers of Customer Segments\")\n",
+        "plt.xticks(list(k_values))\n",
+        "plt.grid(alpha=0.3)\n",
+        "\n",
+        "plt.tight_layout()\n",
+        "plt.show()\n",
+        "\n",
+        "# Best k according to Davies-Bouldin\n",
+        "best_db_k = k_results.loc[\n",
+        "    k_results[\"Davies-Bouldin Index\"].idxmin(), \"k\"\n",
+        "]\n",
+        "\n",
+        "best_db = k_results[\"Davies-Bouldin Index\"].min()\n",
+        "\n",
+        "print(\"Best k by Davies-Bouldin Index:\", best_db_k)\n",
+        "print(\"Lowest Davies-Bouldin Index:\", round(best_db, 4))"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "486ee503",
+      "metadata": {
+        "id": "486ee503"
+      },
+      "source": [
+        "The lowest Davies-Bouldin Index occurs at **k = 3**, with an index of approximately **0.6316**. This suggests that `3` customer segments provide the strongest clustering structure according to the Davies-Bouldin measure."
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "d8bb25b6",
+      "metadata": {
+        "id": "d8bb25b6"
+      },
+      "source": [
+        "### 4.5 Compare the 3 methods\n",
+        "The three methods are now compared directly:\n",
+        "\n",
+        "- **Elbow Method:** identifies where the reduction in inertia begins to level off.\n",
+        "- **Silhouette Score:** higher values indicate better-separated and more cohesive clusters.\n",
+        "- **Davies-Bouldin Index:** lower values indicate more compact and well-separated clusters.\n",
+        "\n",
+        "Because the elbow is based on the shape of the inertia curve rather than simply taking a minimum or maximum value, we estimate the elbow point using `KneeLocator`.\n"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "f4b605f5",
+      "metadata": {
+        "execution": {
+          "iopub.execute_input": "2026-09-22T12:42:38.078682Z",
+          "iopub.status.busy": "2026-09-22T12:42:38.078514Z",
+          "iopub.status.idle": "2026-09-22T12:42:38.522398Z",
+          "shell.execute_reply": "2026-09-22T12:42:38.521100Z"
+        },
+        "id": "f4b605f5"
+      },
+      "outputs": [],
+      "source": [
+        "# Install kneed only if it is not already installed\n",
+        "!pip install kneed"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "70e77f36",
+      "metadata": {
+        "execution": {
+          "iopub.execute_input": "2026-09-22T12:42:38.525196Z",
+          "iopub.status.busy": "2026-09-22T12:42:38.524344Z",
+          "iopub.status.idle": "2026-09-22T12:42:38.619331Z",
+          "shell.execute_reply": "2026-09-22T12:42:38.618235Z"
+        },
+        "id": "70e77f36"
+      },
+      "outputs": [],
+      "source": [
+        "from kneed import KneeLocator\n",
+        "\n",
+        "# Find the elbow point from the inertia results\n",
+        "knee = KneeLocator(\n",
+        "    list(k_values),\n",
+        "    inertias,\n",
+        "    curve=\"convex\",\n",
+        "    direction=\"decreasing\"\n",
+        ")\n",
+        "\n",
+        "elbow_k = knee.elbow\n",
+        "\n",
+        "print(\"Elbow Method suggests k =\", elbow_k)"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "2d39f6ed",
+      "metadata": {
+        "execution": {
+          "iopub.execute_input": "2026-09-22T12:42:38.621695Z",
+          "iopub.status.busy": "2026-09-22T12:42:38.621053Z",
+          "iopub.status.idle": "2026-09-22T12:42:38.633417Z",
+          "shell.execute_reply": "2026-09-22T12:42:38.632580Z"
+        },
+        "id": "2d39f6ed"
+      },
+      "outputs": [],
+      "source": [
+        "# Import KneeLocator to identify the elbow point\n",
+        "from kneed import KneeLocator\n",
+        "\n",
+        "# Find the elbow point from the inertia values\n",
+        "knee = KneeLocator(\n",
+        "    list(k_values),\n",
+        "    inertias,\n",
+        "    curve=\"convex\",\n",
+        "    direction=\"decreasing\"\n",
+        ")\n",
+        "\n",
+        "elbow_k = knee.elbow\n",
+        "\n",
+        "# Display the Elbow Method result\n",
+        "print(\"Best k according to Elbow Method:\", elbow_k)\n",
+        "\n",
+        "# Display the Silhouette result\n",
+        "print(\"Best k according to Silhouette Score:\", best_silhouette_k)\n",
+        "\n",
+        "# Display the Davies-Bouldin result\n",
+        "print(\"Best k according to Davies-Bouldin Index:\", best_db_k)\n",
+        "\n",
+        "\n",
+        "# Put all three methods into one comparison table\n",
+        "method_comparison = pd.DataFrame({\n",
+        "    \"Method\": [\n",
+        "        \"Elbow Method\",\n",
+        "        \"Silhouette Score\",\n",
+        "        \"Davies-Bouldin Index\"\n",
+        "    ],\n",
+        "    \"Preferred k\": [\n",
+        "        elbow_k,\n",
+        "        best_silhouette_k,\n",
+        "        best_db_k\n",
+        "    ],\n",
+        "    \"Decision Rule\": [\n",
+        "        \"Point where inertia begins to level off\",\n",
+        "        \"Highest score\",\n",
+        "        \"Lowest index\"\n",
+        "    ]\n",
+        "})\n",
+        "\n",
+        "display(method_comparison)\n",
+        "\n",
+        "\n",
+        "# Check whether all three methods agree\n",
+        "preferred_k_values = [\n",
+        "    elbow_k,\n",
+        "    best_silhouette_k,\n",
+        "    best_db_k\n",
+        "]\n",
+        "\n",
+        "if len(set(preferred_k_values)) == 1:\n",
+        "    print(\n",
+        "        f\"\\nAll three methods agree that k = {elbow_k} \"\n",
+        "        \"is the strongest candidate.\"\n",
+        "    )\n",
+        "\n",
+        "elif len(set(preferred_k_values)) == 2:\n",
+        "    print(\n",
+        "        \"\\nThe three methods partially agree.\"\n",
+        "    )\n",
+        "    print(\"Preferred k values:\", preferred_k_values)\n",
+        "\n",
+        "else:\n",
+        "    print(\n",
+        "        \"\\nThe three methods do not agree.\"\n",
+        "    )\n",
+        "    print(\"Preferred k values:\", preferred_k_values)"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "d22e0329",
+      "metadata": {
+        "id": "d22e0329"
+      },
+      "source": [
+        "### 4.6 Robustness Check: Different Random Seeds\n",
+        "\n",
+        "K-Means can produce slightly different results depending on its initial centroid positions. Therefore, the analysis is repeated using different random seeds.\n",
+        "\n",
+        "If the same value of `k` continues to perform strongly across different seeds, this provides evidence that the identified customer segmentation structure is stable and is not simply the result of one favourable random initialization."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "009b2d09",
+      "metadata": {
+        "execution": {
+          "iopub.execute_input": "2026-09-22T12:42:38.635446Z",
+          "iopub.status.busy": "2026-09-22T12:42:38.634865Z",
+          "iopub.status.idle": "2026-09-22T12:42:39.848277Z",
+          "shell.execute_reply": "2026-09-22T12:42:39.847317Z"
+        },
+        "id": "009b2d09"
+      },
+      "outputs": [],
+      "source": [
+        "seeds = [0, 21, 42, 99, 123]\n",
+        "\n",
+        "robustness_results = []\n",
+        "\n",
+        "for seed in seeds:\n",
+        "    for k in k_values:\n",
+        "\n",
+        "        model = KMeans(\n",
+        "            n_clusters=k,\n",
+        "            random_state=seed,\n",
+        "            n_init=20\n",
+        "        )\n",
+        "\n",
+        "        labels = model.fit_predict(X_scaled)\n",
+        "\n",
+        "        robustness_results.append({\n",
+        "            \"Seed\": seed,\n",
+        "            \"k\": k,\n",
+        "            \"Silhouette Score\": silhouette_score(X_scaled, labels),\n",
+        "            \"Davies-Bouldin Index\": davies_bouldin_score(X_scaled, labels)\n",
+        "        })\n",
+        "\n",
+        "robustness_df = pd.DataFrame(robustness_results)\n",
+        "\n",
+        "robustness_df.round(4)"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "ac74a779",
+      "metadata": {
+        "execution": {
+          "iopub.execute_input": "2026-09-22T12:42:39.849981Z",
+          "iopub.status.busy": "2026-09-22T12:42:39.849764Z",
+          "iopub.status.idle": "2026-09-22T12:42:39.859960Z",
+          "shell.execute_reply": "2026-09-22T12:42:39.859122Z"
+        },
+        "id": "ac74a779"
+      },
+      "outputs": [],
+      "source": [
+        "# Find the best k under each seed\n",
+        "seed_summary = []\n",
+        "\n",
+        "for seed in seeds:\n",
+        "\n",
+        "    temp = robustness_df[robustness_df[\"Seed\"] == seed]\n",
+        "\n",
+        "    best_sil_k = temp.loc[\n",
+        "        temp[\"Silhouette Score\"].idxmax(), \"k\"\n",
+        "    ]\n",
+        "\n",
+        "    best_db_k_seed = temp.loc[\n",
+        "        temp[\"Davies-Bouldin Index\"].idxmin(), \"k\"\n",
+        "    ]\n",
+        "\n",
+        "    seed_summary.append({\n",
+        "        \"Seed\": seed,\n",
+        "        \"Best k - Silhouette\": best_sil_k,\n",
+        "        \"Best k - Davies-Bouldin\": best_db_k_seed\n",
+        "    })\n",
+        "\n",
+        "seed_summary = pd.DataFrame(seed_summary)\n",
+        "\n",
+        "seed_summary"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "0d052560",
+      "metadata": {
+        "id": "0d052560"
+      },
+      "source": [
+        "### Check 2 - Change the Scaling method"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "bfe5aa2c",
+      "metadata": {
+        "execution": {
+          "iopub.execute_input": "2026-09-22T12:42:39.862019Z",
+          "iopub.status.busy": "2026-09-22T12:42:39.861385Z",
+          "iopub.status.idle": "2026-09-22T12:42:40.088289Z",
+          "shell.execute_reply": "2026-09-22T12:42:40.087130Z"
+        },
+        "id": "bfe5aa2c"
+      },
+      "outputs": [],
+      "source": [
+        "from sklearn.preprocessing import RobustScaler\n",
+        "\n",
+        "# Apply an alternative scaling method to the SAME imputed features\n",
+        "robust_scaler = RobustScaler()\n",
+        "\n",
+        "X_robust = robust_scaler.fit_transform(X_imputed)\n",
+        "\n",
+        "robust_scaling_results = []\n",
+        "\n",
+        "for k in k_values:\n",
+        "\n",
+        "    model = KMeans(\n",
+        "        n_clusters=k,\n",
+        "        random_state=42,\n",
+        "        n_init=20\n",
+        "    )\n",
+        "\n",
+        "    labels = model.fit_predict(X_robust)\n",
+        "\n",
+        "    robust_scaling_results.append({\n",
+        "        \"k\": k,\n",
+        "        \"Silhouette Score\": silhouette_score(X_robust, labels),\n",
+        "        \"Davies-Bouldin Index\": davies_bouldin_score(X_robust, labels)\n",
+        "    })\n",
+        "\n",
+        "robust_scaling_df = pd.DataFrame(robust_scaling_results)\n",
+        "\n",
+        "robust_scaling_df.round(4)"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "ea2416d0",
+      "metadata": {
+        "execution": {
+          "iopub.execute_input": "2026-09-22T12:42:40.090728Z",
+          "iopub.status.busy": "2026-09-22T12:42:40.089896Z",
+          "iopub.status.idle": "2026-09-22T12:42:40.096143Z",
+          "shell.execute_reply": "2026-09-22T12:42:40.095195Z"
+        },
+        "id": "ea2416d0"
+      },
+      "outputs": [],
+      "source": [
+        "# Best k under RobustScaler\n",
+        "robust_best_sil_k = robust_scaling_df.loc[\n",
+        "    robust_scaling_df[\"Silhouette Score\"].idxmax(), \"k\"\n",
+        "]\n",
+        "\n",
+        "robust_best_db_k = robust_scaling_df.loc[\n",
+        "    robust_scaling_df[\"Davies-Bouldin Index\"].idxmin(), \"k\"\n",
+        "]\n",
+        "\n",
+        "print(\"STANDARD SCALER\")\n",
+        "print(\"Best k by Silhouette:\", best_silhouette_k)\n",
+        "print(\"Best k by Davies-Bouldin:\", best_db_k)\n",
+        "\n",
+        "print(\"\\nROBUST SCALER\")\n",
+        "print(\"Best k by Silhouette:\", robust_best_sil_k)\n",
+        "print(\"Best k by Davies-Bouldin:\", robust_best_db_k)"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "746189a1",
+      "metadata": {
+        "id": "746189a1"
+      },
+      "source": [
+        "### Scaling Robustness Interpretation\n",
+        "\n",
+        "`StandardScaler` was used in the main analysis because it places all four customer-behavior variables on comparable standardized scales. As a robustness check, the clustering analysis was repeated using `RobustScaler`, which is less influenced by extreme values because it uses the median and interquartile range.\n",
+        "\n",
+        "The purpose of this test is not automatically to replace the StandardScaler model. Instead, it checks whether the preferred number of customer segments depends heavily on the scaling method.\n",
+        "\n",
+        "If StandardScaler and RobustScaler identify the same or nearby values of `k`, this strengthens confidence that the customer segmentation structure is reasonably robust. If they identify substantially different values, scaling choice materially affects the clustering solution and should be considered when Member 5 selects the final `k`."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "807bf96c",
+      "metadata": {
+        "execution": {
+          "iopub.execute_input": "2026-09-22T12:42:40.097888Z",
+          "iopub.status.busy": "2026-09-22T12:42:40.097688Z",
+          "iopub.status.idle": "2026-09-22T12:42:40.109692Z",
+          "shell.execute_reply": "2026-09-22T12:42:40.108948Z"
+        },
+        "id": "807bf96c"
+      },
+      "outputs": [],
+      "source": [
+        "# Main k-selection results for Member 5\n",
+        "member4_results = k_results.copy()\n",
+        "\n",
+        "member4_results[\"Silhouette Score\"] = (\n",
+        "    member4_results[\"Silhouette Score\"].round(4)\n",
+        ")\n",
+        "\n",
+        "member4_results[\"Davies-Bouldin Index\"] = (\n",
+        "    member4_results[\"Davies-Bouldin Index\"].round(4)\n",
+        ")\n",
+        "\n",
+        "member4_results[\"Inertia\"] = (\n",
+        "    member4_results[\"Inertia\"].round(2)\n",
+        ")\n",
+        "\n",
+        "print(\"Member 4 - k Selection Results\")\n",
+        "display(member4_results)\n",
+        "\n",
+        "print(\"\\nMain candidates:\")\n",
+        "print(\"Best k by Silhouette:\", best_silhouette_k)\n",
+        "print(\"Best k by Davies-Bouldin:\", best_db_k)\n",
+        "\n",
+        "print(\"\\nRobustness using alternative scaling:\")\n",
+        "print(\"Best k by RobustScaler Silhouette:\", robust_best_sil_k)\n",
+        "print(\"Best k by RobustScaler Davies-Bouldin:\", robust_best_db_k)"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "0de08095",
+      "metadata": {
+        "id": "0de08095"
+      },
+      "source": [
+        "## 5. Cluster Diagnostics and Final k Selection\n",
+        "\n",
+        "### Member 5: Diagnostics and Final k\n",
+        "\n",
+        "Member 4 tested `k = 2` to `10` using three methods and found they **do not agree**: the Elbow\n",
+        "Method points to `k = 4`, the Silhouette Score points to `k = 5`, and the Davies-Bouldin Index\n",
+        "points to `k = 3`. This section resolves that disagreement by going beyond the raw scores:\n",
+        "checking whether each leading candidate produces balanced, usable customer segments, and\n",
+        "interpreting what the winning silhouette score actually means for this dataset before\n",
+        "committing to a final `k`."
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "098b5a79",
+      "metadata": {
+        "id": "098b5a79"
+      },
+      "source": [
+        "### 5.1 Comparing the Leading Candidate k Values Side by Side"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "1de97922",
+      "metadata": {
+        "execution": {
+          "iopub.execute_input": "2026-09-22T12:42:40.111752Z",
+          "iopub.status.busy": "2026-09-22T12:42:40.111169Z",
+          "iopub.status.idle": "2026-09-22T12:42:40.187421Z",
+          "shell.execute_reply": "2026-09-22T12:42:40.186442Z"
+        },
+        "id": "1de97922"
+      },
+      "outputs": [],
+      "source": [
+        "# The three methods from Section 4 disagreed on k, so all three of their preferred\n",
+        "# values are carried forward as candidates rather than picking one method's answer blindly.\n",
+        "candidate_ks = sorted(set([elbow_k, best_silhouette_k, best_db_k]))  # -> [3, 4, 5]\n",
+        "\n",
+        "candidate_rows = []\n",
+        "candidate_labels = {}\n",
+        "candidate_models = {}\n",
+        "\n",
+        "for k in candidate_ks:\n",
+        "    model = KMeans(n_clusters=k, random_state=42, n_init=20)\n",
+        "    labels = model.fit_predict(X_scaled)\n",
+        "\n",
+        "    sizes = pd.Series(labels).value_counts().sort_index()\n",
+        "    min_pct = 100 * sizes.min() / len(labels)\n",
+        "    max_pct = 100 * sizes.max() / len(labels)\n",
+        "\n",
+        "    candidate_rows.append({\n",
+        "        \"k\": k,\n",
+        "        \"Silhouette Score\": round(silhouette_score(X_scaled, labels), 4),\n",
+        "        \"Davies-Bouldin Index\": round(davies_bouldin_score(X_scaled, labels), 4),\n",
+        "        \"Calinski-Harabasz\": round(calinski_harabasz_score(X_scaled, labels), 2),\n",
+        "        \"Smallest cluster %\": round(min_pct, 1),\n",
+        "        \"Largest cluster %\": round(max_pct, 1),\n",
+        "        \"Which method preferred this k\": \", \".join(\n",
+        "            [name for name, val in\n",
+        "             [(\"Elbow\", elbow_k), (\"Silhouette\", best_silhouette_k), (\"Davies-Bouldin\", best_db_k)]\n",
+        "             if val == k]\n",
+        "        )\n",
+        "    })\n",
+        "    candidate_labels[k] = labels\n",
+        "    candidate_models[k] = model\n",
+        "\n",
+        "candidate_comparison = pd.DataFrame(candidate_rows)\n",
+        "print(\"Candidate k values handed off from Member 4, compared side by side:\")\n",
+        "display(candidate_comparison)"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "4f6f8911",
+      "metadata": {
+        "id": "4f6f8911"
+      },
+      "source": [
+        "**Reading the table:** `k = 5` has the best (highest) Silhouette Score and the best\n",
+        "(highest) Calinski-Harabasz score of the three candidates, and its smallest and largest\n",
+        "clusters are the closest in size to each other (16.8%–23.3% of customers). `k = 3` has the\n",
+        "best (lowest) Davies-Bouldin Index, but its cluster sizes are the most lopsided of the three\n",
+        "candidates by a wide margin — one cluster alone holds more than 61% of all 750 customers.\n",
+        "`k = 4` sits in between on every measure. The next two sections check this balance concern\n",
+        "properly and interpret what the leading silhouette score means before a final choice is made."
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "56de6be4",
+      "metadata": {
+        "id": "56de6be4"
+      },
+      "source": [
+        "### 5.2 Cluster Size Balance Check"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "99866ced",
+      "metadata": {
+        "execution": {
+          "iopub.execute_input": "2026-09-22T12:42:40.189258Z",
+          "iopub.status.busy": "2026-09-22T12:42:40.189093Z",
+          "iopub.status.idle": "2026-09-22T12:42:40.425600Z",
+          "shell.execute_reply": "2026-09-22T12:42:40.424670Z"
+        },
+        "id": "99866ced"
+      },
+      "outputs": [],
+      "source": [
+        "fig, axes = plt.subplots(1, len(candidate_ks), figsize=(5 * len(candidate_ks), 4), sharey=False)\n",
+        "\n",
+        "for ax, k in zip(axes, candidate_ks):\n",
+        "    sizes = pd.Series(candidate_labels[k]).value_counts().sort_index()\n",
+        "    bars = ax.bar(sizes.index.astype(str), sizes.values, color=\"#4C72B0\")\n",
+        "    ax.set_title(f\"k = {k} cluster sizes\")\n",
+        "    ax.set_xlabel(\"Cluster\")\n",
+        "    ax.set_ylabel(\"Number of customers\")\n",
+        "    for bar, val in zip(bars, sizes.values):\n",
+        "        pct = 100 * val / sizes.sum()\n",
+        "        ax.text(bar.get_x() + bar.get_width() / 2, val, f\"{pct:.0f}%\",\n",
+        "                 ha=\"center\", va=\"bottom\", fontsize=9)\n",
+        "\n",
+        "plt.tight_layout()\n",
+        "plt.show()"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "20489fb2",
+      "metadata": {
+        "id": "20489fb2"
+      },
+      "source": [
+        "**Insight:** No candidate produces a degenerate, near-empty cluster (the smallest cluster\n",
+        "across all three candidates still holds at least 16.8% of customers), so none of the three\n",
+        "fails the minimum bar of \"did K-Means just isolate a handful of outliers.\" But balance is\n",
+        "clearly not equal across candidates. At `k = 3`, one cluster absorbs 61% of all customers\n",
+        "while the other two split the remainder — behaviourally, this reads less like \"three\n",
+        "distinct customer types\" and more like \"one large, loosely-defined group plus two smaller,\n",
+        "more distinct ones,\" which is a weaker segmentation for the business questions this\n",
+        "clustering is meant to support (e.g., targeting a specific behavioral segment with a\n",
+        "campaign). At `k = 5`, the five clusters are within about 6.5 percentage points of each\n",
+        "other, the most even split of the three candidates."
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "476d5e76",
+      "metadata": {
+        "id": "476d5e76"
+      },
+      "source": [
+        "### 5.3 What the Silhouette Score Means for This Clustering Solution"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "feee27d1",
+      "metadata": {
+        "execution": {
+          "iopub.execute_input": "2026-09-22T12:42:40.427746Z",
+          "iopub.status.busy": "2026-09-22T12:42:40.427154Z",
+          "iopub.status.idle": "2026-09-22T12:42:40.453413Z",
+          "shell.execute_reply": "2026-09-22T12:42:40.452412Z"
+        },
+        "id": "feee27d1"
+      },
+      "outputs": [],
+      "source": [
+        "from sklearn.metrics import silhouette_samples\n",
+        "\n",
+        "chosen_k_preview = 5  # leading candidate from 5.1/5.2; confirmed in 5.4\n",
+        "\n",
+        "sample_silhouette = silhouette_samples(X_scaled, candidate_labels[chosen_k_preview])\n",
+        "sil_by_cluster = pd.DataFrame({\n",
+        "    \"cluster\": candidate_labels[chosen_k_preview],\n",
+        "    \"silhouette\": sample_silhouette\n",
+        "}).groupby(\"cluster\")[\"silhouette\"].agg([\"mean\", \"min\", \"max\", \"count\"]).round(3)\n",
+        "\n",
+        "print(f\"Overall Silhouette Score for k = {chosen_k_preview}: \"\n",
+        "      f\"{silhouette_score(X_scaled, candidate_labels[chosen_k_preview]):.4f}\")\n",
+        "print(f\"\\nCustomers with a NEGATIVE silhouette (likely mis-clustered): \"\n",
+        "      f\"{(sample_silhouette < 0).sum()} of {len(sample_silhouette)} \"\n",
+        "      f\"({100 * (sample_silhouette < 0).mean():.1f}%)\")\n",
+        "print(\"\\nPer-cluster silhouette summary:\")\n",
+        "display(sil_by_cluster)"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "fa8dceca",
+      "metadata": {
+        "id": "fa8dceca"
+      },
+      "source": [
+        "**Interpretation:** An overall Silhouette Score of **0.58** falls in the range generally\n",
+        "read as \"reasonable, real cluster structure\" rather than \"weak/artificial\" (scores near 0\n",
+        "would suggest overlapping clusters, and scores near 1 would suggest near-perfect\n",
+        "separation, which is uncommon for behavioral, continuously-distributed data like ours).\n",
+        "Concretely, it means the typical customer sits noticeably closer to the other customers in\n",
+        "their own segment than to the nearest neighboring segment, but the boundaries are not razor\n",
+        "sharp — some customers sit in between two segments' behavior profiles, which matches what\n",
+        "we would expect of real purchasing behavior (customers do not fall into perfectly discrete\n",
+        "behavioral boxes). None of the 750 customers has a negative silhouette value (0.0%), meaning\n",
+        "not one customer is, on balance, closer to a neighboring cluster than to their own — every\n",
+        "customer is at least somewhat better matched to their assigned segment than to any\n",
+        "alternative. Per-cluster averages do vary (from 0.42 up to 0.76), so some segments are more\n",
+        "tightly formed than others, but even the weakest cluster is comfortably above zero. Read\n",
+        "against Section 5.1: 0.58 is the *best* silhouette among the three candidates Member 4\n",
+        "identified, not just an acceptable one in isolation, which is additional evidence for\n",
+        "preferring `k = 5` over the alternatives."
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "29d602fc",
+      "metadata": {
+        "id": "29d602fc"
+      },
+      "source": [
+        "### 5.4 Final Chosen k"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "id": "1e8529e4",
+      "metadata": {
+        "execution": {
+          "iopub.execute_input": "2026-09-22T12:42:40.455601Z",
+          "iopub.status.busy": "2026-09-22T12:42:40.454982Z",
+          "iopub.status.idle": "2026-09-22T12:42:40.462762Z",
+          "shell.execute_reply": "2026-09-22T12:42:40.461914Z"
+        },
+        "id": "1e8529e4"
+      },
+      "outputs": [],
+      "source": [
+        "final_k = 5\n",
+        "\n",
+        "print(\"FINAL DECISION\")\n",
+        "print(\"=\" * 50)\n",
+        "print(f\"Chosen k: {final_k}\")\n",
+        "print(f\"Silhouette Score: {candidate_comparison.loc[candidate_comparison['k'] == final_k, 'Silhouette Score'].values[0]}\")\n",
+        "print(f\"Davies-Bouldin Index: {candidate_comparison.loc[candidate_comparison['k'] == final_k, 'Davies-Bouldin Index'].values[0]}\")\n",
+        "print(f\"Cluster size range: {candidate_comparison.loc[candidate_comparison['k'] == final_k, 'Smallest cluster %'].values[0]}% - \"\n",
+        "      f\"{candidate_comparison.loc[candidate_comparison['k'] == final_k, 'Largest cluster %'].values[0]}%\")\n",
+        "\n",
+        "# Fit and keep the final model for Member 6\n",
+        "final_model = candidate_models[final_k]\n",
+        "final_labels = candidate_labels[final_k]\n",
+        "df[\"cluster\"] = final_labels\n",
+        "\n",
+        "print(f\"\\n`final_model`, `final_labels`, and `df['cluster']` are now ready for Member 6.\")"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "id": "b04dd1ab",
+      "metadata": {
+        "id": "b04dd1ab"
+      },
+      "source": [
+        "**Why k = 5, not the Davies-Bouldin-preferred k = 3:** The three methods from Section 4 did\n",
+        "not agree, so no single metric can settle this by default — the decision has to be argued,\n",
+        "which is exactly what Sections 5.1–5.3 did:\n",
+        "\n",
+        "- `k = 5` has the **best Silhouette Score (0.5782)** and the **best Calinski-Harabasz score**\n",
+        "  of all three candidates, and Section 4.6's robustness check confirmed this preference for\n",
+        "  `k = 5` was stable across five different random seeds and under an alternative\n",
+        "  (`RobustScaler`) scaling method — it is not an artifact of one lucky initialization.\n",
+        "- `k = 3` has the best Davies-Bouldin Index, but Section 5.2 showed this comes at the cost of\n",
+        "  a heavily imbalanced solution: 61% of all customers land in a single, loosely-defined\n",
+        "  cluster. A metric preferring compact, well-separated clusters can still rate that solution\n",
+        "  well mathematically while it is *less useful* for the business purpose of this analysis,\n",
+        "  distinguishing genuinely different customer behavior types worth targeting differently.\n",
+        "- `k = 4` (the Elbow candidate) is close to `k = 5` on every measure but does not lead on any\n",
+        "  of them, and sits in between on balance too.\n",
+        "\n",
+        "Given that the two candidates disagree on which single metric to trust, and the\n",
+        "better-separated, better-balanced option (`k = 5`) is also the one whose advantage held up\n",
+        "under every robustness check Member 4 ran, `k = 5` is the more defensible choice, even though\n",
+        "it is not the Davies-Bouldin-optimal value. **Final decision: k = 5.**"
+      ]
+    }
+  ],
+  "metadata": {
+    "colab": {
+      "provenance": [],
+      "toc_visible": true
+    },
+    "kernelspec": {
+      "display_name": "Python 3",
+      "language": "python",
+      "name": "python3"
+    },
+    "language_info": {
+      "codemirror_mode": {
+        "name": "ipython",
+        "version": 3
+      },
+      "file_extension": ".py",
+      "mimetype": "text/x-python",
+      "name": "python",
+      "nbconvert_exporter": "python",
+      "pygments_lexer": "ipython3",
+      "version": "3.12.3"
+    }
+  },
+  "nbformat": 4,
+  "nbformat_minor": 5
+}
